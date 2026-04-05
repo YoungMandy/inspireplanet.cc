@@ -6,6 +6,7 @@ import '@/styles/index.css';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import FloatingActions from './components/FloatingActions';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { getUserName, isUserLoggedIn } from './utils/user';
@@ -78,6 +79,9 @@ const App: React.FC = () => {
         </main>
 
         <FloatingActions />
+
+        {/* PWA安装提示 */}
+        <PWAInstallPrompt />
 
         {/* 底部组件 */}
         <Footer />
