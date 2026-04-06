@@ -14,11 +14,22 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
+  // 开发环境不缓存任何请求
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    return;
+  }
+
   // 不缓存以下请求：
   // 1. chrome-extension等特殊协议
   // 2. 非GET请求
   // 3. 非http/https协议
-  if (!url.protocol.startsWith('http') || request.method !== 'GET') {
+  // 4. API请求
+  if (
+    !url.protocol.startsWith('http') ||
+    request.method !== 'GET' ||
+    url.pathname.startsWith('/.netlify/functions') ||
+    url.pathname.startsWith('/api')
+  ) {
     return;
   }
 
