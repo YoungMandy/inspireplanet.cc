@@ -12,25 +12,21 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
-  FormControlLabel,
-  Switch,
   CircularProgress,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateCalendar } from '@mui/x-date-pickers';
 import { PickersDay } from '@mui/x-date-pickers/PickersDay';
+import { useNavigate } from 'react-router-dom';
 import { useGlobalSnackbar } from '../../context/app';
 import { meetupsApi } from '../../netlify/services/meetups';
-import { Meetup } from '../../netlify/functions/meetup';
+import { Meetup, MeetupMode } from '../../netlify/functions/meetup';
 import dayjs from 'dayjs';
+import EditForm, { formatDateTimeLocal } from './components/EditForm';
+import { getUserName } from '../../utils/user';
 
 // 活动类型定义
 interface Activity {
@@ -46,24 +42,34 @@ interface Activity {
 }
 
 const ActivityCalendar: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(dayjs());
   const [activities, setActivities] = useState<Activity[]>([]);
   const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [newActivity, setNewActivity] = useState<Activity>({
-    id: '',
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const showSnackbar = useGlobalSnackbar();
+
+  // 初始化默认日期
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(19, 0, 0, 0);
+
+  // 初始表单值
+  const initialValues: Meetup = {
     title: '',
     description: '',
-    date: dayjs().format('YYYY-MM-DD'),
-    time: '10:00 AM',
+    mode: MeetupMode.ONLINE,
+    datetime: formatDateTimeLocal(tomorrow),
     location: '',
-    type: 'meeting',
-    isRecurring: false,
-    recurrenceDay: 1, // 默认周一
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const showSnackbar = useGlobalSnackbar();
+    duration: '',
+    max_ppl: null,
+    creator: getUserName() || '',
+    wechat_id: '',
+    cover: '',
+  };
 
   // 从API加载活动数据
   const loadActivities = async () => {
@@ -142,361 +148,253 @@ const ActivityCalendar: React.FC = () => {
     }
   };
 
-  // 处理添加活动
-  const handleAddActivity = () => {
-    if (!newActivity.title || !newActivity.date) {
-      setError('请填写活动标题和日期');
-      return;
+  // 处理活动创建
+  const handleCreateActivity = async (data: any) => {
+    setSubmitLoading(true);
+    try {
+      // 提交活动数据
+      const response = await meetupsApi.create(data);
+
+      if (!response.success) {
+        showSnackbar.error(response.error || '发布失败');
+        return;
+      }
+
+      showSnackbar.success('活动发布成功！');
+      setShowAddModal(false);
+      // 重新加载活动数据
+      await loadActivities();
+    } catch (error) {
+      showSnackbar.error(
+        '发布失败: ' + (error instanceof Error ? error.message : '未知错误')
+      );
+    } finally {
+      setSubmitLoading(false);
     }
-
-    const activity: Activity = {
-      ...newActivity,
-      id: Date.now().toString(),
-    };
-
-    setActivities([...activities, activity]);
-    setShowAddModal(false);
-    setNewActivity({
-      title: '',
-      description: '',
-      date: dayjs().format('YYYY-MM-DD'),
-      time: '12:00 PM',
-      location: '',
-      type: 'meeting',
-      isRecurring: false,
-      recurrenceDay: 1,
-    });
-    setError(null);
   };
 
-  // 获取活动类型的显示信息
-  const getActivityTypeInfo = (type: Activity['type']) => {
-    const typeMap = {
-      meeting: { label: '会议', color: 'primary' },
-      workshop: { label: '工作坊', color: 'secondary' },
-      social: { label: '社交', color: 'success' },
-      other: { label: '其他', color: 'info' },
-    };
-    return typeMap[type];
+  // 处理活动详情跳转
+  const handleActivityClick = (activityId: string) => {
+    navigate(`/meetup-detail?id=${activityId}`);
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        活动日历
-      </Typography>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#fff' }}>
+      <Container maxWidth="lg" sx={{ py: 6, flexGrow: 1 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          活动日历
+        </Typography>
 
-      <Grid container spacing={4}>
-        {/* 日历部分 */}
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-            {isLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DateCalendar
-                  value={selectedDate}
-                  onChange={(date) => setSelectedDate(date || dayjs())}
-                  slots={{
-                    day: (props) => {
-                      const { day, selected, isDayOutsideMonth, ...other } =
-                        props;
-                      if (!day) return null;
+        <Grid container spacing={4}>
+          {/* 日历部分 */}
+          <Grid size={{ xs: 12, md: 8 }}>
+            <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+              {isLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <DateCalendar
+                    value={selectedDate}
+                    onChange={(date) => setSelectedDate(date || dayjs())}
+                    slots={{
+                      day: (props) => {
+                        const { day } = props;
+                        if (!day) return null;
 
-                      try {
-                        // 检查是否是当月日期且不是空白位置
-                        if (isDayOutsideMonth) {
+                        try {
+                          // 检查是否是当月日期且不是空白位置
+                          if (props.outsideCurrentMonth) {
+                            return <PickersDay {...props} />;
+                          }
+
+                          const dateStr = day.format('YYYY-MM-DD');
+                          const hasActivity = activities.some(
+                            (activity) => activity.date === dateStr
+                          );
+
+                          return (
+                            <PickersDay
+                              sx={{ position: 'relative' }}
+                              {...props}
+                            >
+                              {day.date()}
+                              {hasActivity && (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    top: '80%',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    width: 4,
+                                    height: 4,
+                                    borderRadius: '50%',
+                                    backgroundColor: props.selected
+                                      ? 'white'
+                                      : 'primary.main',
+                                  }}
+                                />
+                              )}
+                            </PickersDay>
+                          );
+                        } catch (error) {
+                          // 如果日期对象有问题，返回默认的PickersDay
                           return <PickersDay {...props} />;
                         }
+                      },
+                    }}
+                    sx={{
+                      '& .MuiDateCalendar-root': {
+                        width: '100%',
+                      },
+                      '& .MuiPickersDay-root': {
+                        height: 40,
+                        width: 40,
+                        fontSize: '0.875rem',
+                      },
+                      '& .MuiPickersDay-today': {
+                        backgroundColor: 'primary.light',
+                      },
+                      '& .Mui-selected': {
+                        backgroundColor: 'primary.main',
+                      },
+                    }}
+                  />
+                </LocalizationProvider>
+              )}
+            </Paper>
+          </Grid>
 
-                        const dateStr = day.format('YYYY-MM-DD');
-                        const hasActivity = activities.some(
-                          (activity) => activity.date === dateStr
-                        );
-
-                        return (
-                          <PickersDay
-                            sx={{ position: 'relative' }}
-                            {...other}
-                            day={day}
-                            selected={selected}
-                          >
-                            {day.date()}
-                            {hasActivity && (
-                              <Box
-                                sx={{
-                                  position: 'absolute',
-                                  top: '80%',
-                                  left: '50%',
-                                  transform: 'translateX(-50%)',
-                                  width: 4,
-                                  height: 4,
-                                  borderRadius: '50%',
-                                  backgroundColor: selected
-                                    ? 'white'
-                                    : 'primary.main',
-                                }}
-                              />
-                            )}
-                          </PickersDay>
-                        );
-                      } catch (error) {
-                        // 如果日期对象有问题，返回默认的PickersDay
-                        return <PickersDay {...props} />;
-                      }
-                    },
-                  }}
-                  sx={{
-                    '& .MuiDateCalendar-root': {
-                      width: '100%',
-                    },
-                    '& .MuiPickersDay-root': {
-                      height: 40,
-                      width: 40,
-                      fontSize: '0.875rem',
-                    },
-                    '& .MuiPickersDay-today': {
-                      backgroundColor: 'primary.light',
-                    },
-                    '& .Mui-selected': {
-                      backgroundColor: 'primary.main',
-                    },
-                  }}
-                />
-              </LocalizationProvider>
-            )}
-          </Paper>
-        </Grid>
-
-        {/* 活动列表部分 */}
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 3,
-              }}
-            >
-              <Typography variant="h6">
-                {selectedDate.format('YYYY年MM月DD日')} 活动
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setShowAddModal(true)}
+          {/* 活动列表部分 */}
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Paper elevation={3} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 3,
+                }}
               >
-                添加活动
-              </Button>
-            </Box>
-
-            {isLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
+                <Typography variant="h6">
+                  {selectedDate.format('YYYY年MM月DD日')} 活动
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setShowAddModal(true)}
+                >
+                  添加活动
+                </Button>
               </Box>
-            ) : filteredActivities.length === 0 ? (
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                sx={{ textAlign: 'center', py: 4 }}
-              >
-                该日期暂无活动
-              </Typography>
-            ) : (
-              <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
-                {filteredActivities.map((activity) => {
-                  const typeInfo = getActivityTypeInfo(activity.type);
-                  return (
-                    <Card key={activity.id} sx={{ mb: 2, borderRadius: 1 }}>
-                      <CardContent>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start',
-                            mb: 1,
-                            flexWrap: 'wrap',
-                            gap: 1,
-                          }}
-                        >
+
+              {isLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : filteredActivities.length === 0 ? (
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{ textAlign: 'center', py: 4 }}
+                >
+                  该日期暂无活动
+                </Typography>
+              ) : (
+                <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
+                  {filteredActivities.map((activity) => {
+                    return (
+                      <Card
+                        key={activity.id}
+                        sx={{
+                          mb: 2,
+                          borderRadius: 1,
+                          cursor: 'pointer',
+                          '&:hover': {
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.2s ease',
+                          },
+                        }}
+                        onClick={() => handleActivityClick(activity.id)}
+                      >
+                        <CardContent sx={{ position: 'relative' }}>
+                          {/* 标题单独一行 */}
                           <Typography
                             variant="h6"
                             component="div"
-                            sx={{ flex: 1 }}
+                            sx={{ mb: 1 }}
                           >
                             {activity.title}
                           </Typography>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Chip
-                              label={typeInfo.label}
-                              color={typeInfo.color as any}
-                              size="small"
-                            />
-                            {activity.isRecurring && (
-                              <Chip
-                                label="每周固定"
-                                color="info"
+
+                          {/* 时间和地点 */}
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 1 }}
+                          >
+                            {activity.time} • {activity.location}
+                          </Typography>
+
+                          {/* 描述 */}
+                          <Typography variant="body2" sx={{ mb: 2 }}>
+                            {activity.description}
+                          </Typography>
+
+                          {/* 查看按钮放在右下角 */}
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              bottom: 16,
+                              right: 16,
+                              display: 'flex',
+                              justifyContent: 'flex-end',
+                            }}
+                          >
+                            <Tooltip title="查看详情">
+                              <Button
                                 size="small"
-                              />
-                            )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleActivityClick(activity.id);
+                                }}
+                                sx={{ color: 'primary.main' }}
+                              >
+                                查看
+                              </Button>
+                            </Tooltip>
                           </Box>
-                        </Box>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mb: 1 }}
-                        >
-                          {activity.time} • {activity.location}
-                        </Typography>
-                        <Typography variant="body2">
-                          {activity.description}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </Box>
-            )}
-          </Paper>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </Box>
+              )}
+            </Paper>
+          </Grid>
         </Grid>
-      </Grid>
 
-      {/* 添加活动对话框 */}
-      <Dialog
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>添加新活动</DialogTitle>
-        <DialogContent>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          <TextField
-            fullWidth
-            label="活动标题"
-            value={newActivity.title}
-            onChange={(e) =>
-              setNewActivity({ ...newActivity, title: e.target.value })
-            }
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="活动描述"
-            multiline
-            rows={3}
-            value={newActivity.description}
-            onChange={(e) =>
-              setNewActivity({ ...newActivity, description: e.target.value })
-            }
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="日期"
-            type="date"
-            value={newActivity.date}
-            onChange={(e) =>
-              setNewActivity({ ...newActivity, date: e.target.value })
-            }
-            InputLabelProps={{ shrink: true }}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="时间"
-            type="time"
-            value={newActivity.time}
-            onChange={(e) =>
-              setNewActivity({ ...newActivity, time: e.target.value })
-            }
-            InputLabelProps={{ shrink: true }}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="地点"
-            value={newActivity.location}
-            onChange={(e) =>
-              setNewActivity({ ...newActivity, location: e.target.value })
-            }
-            sx={{ mb: 2 }}
-          />
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>活动类型</InputLabel>
-            <Select
-              value={newActivity.type}
-              label="活动类型"
-              onChange={(e) =>
-                setNewActivity({
-                  ...newActivity,
-                  type: e.target.value as Activity['type'],
-                })
-              }
-            >
-              <MenuItem value="meeting">会议</MenuItem>
-              <MenuItem value="workshop">工作坊</MenuItem>
-              <MenuItem value="social">社交</MenuItem>
-              <MenuItem value="other">其他</MenuItem>
-            </Select>
-          </FormControl>
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={newActivity.isRecurring}
-                onChange={(e) =>
-                  setNewActivity({
-                    ...newActivity,
-                    isRecurring: e.target.checked,
-                  })
-                }
-                name="isRecurring"
-              />
-            }
-            label="每周固定活动"
-            sx={{ mb: 2 }}
-          />
-
-          {newActivity.isRecurring && (
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>每周几</InputLabel>
-              <Select
-                value={newActivity.recurrenceDay}
-                label="每周几"
-                onChange={(e) =>
-                  setNewActivity({
-                    ...newActivity,
-                    recurrenceDay: e.target.value as number,
-                  })
-                }
-              >
-                <MenuItem value={0}>周日</MenuItem>
-                <MenuItem value={1}>周一</MenuItem>
-                <MenuItem value={2}>周二</MenuItem>
-                <MenuItem value={3}>周三</MenuItem>
-                <MenuItem value={4}>周四</MenuItem>
-                <MenuItem value={5}>周五</MenuItem>
-                <MenuItem value={6}>周六</MenuItem>
-              </Select>
-            </FormControl>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsAddDialogOpen(false)}>取消</Button>
-          <Button variant="contained" onClick={handleAddActivity}>
-            添加
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+        {/* 添加活动对话框 */}
+        <Dialog
+          open={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          maxWidth="lg"
+          fullWidth
+        >
+          <DialogTitle>添加新活动</DialogTitle>
+          <DialogContent sx={{ maxHeight: '80vh', overflowY: 'auto' }}>
+            <EditForm
+              initialValues={initialValues}
+              onSubmit={handleCreateActivity}
+              submitText="🚀 发布活动"
+              isLoading={submitLoading}
+            />
+          </DialogContent>
+        </Dialog>
+      </Container>
+    </Box>
   );
 };
 

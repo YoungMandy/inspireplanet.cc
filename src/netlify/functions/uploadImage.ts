@@ -3,7 +3,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
   handleOptionsRequest,
-  getFuntionNameFromEvent,
+  getFunctionNameFromEvent,
   getDataFromEvent,
 } from '../utils/server';
 
@@ -39,7 +39,7 @@ export async function handler(
   }
 
   try {
-    const functionName = getFuntionNameFromEvent(event);
+    const functionName = getFunctionNameFromEvent(event);
 
     switch (functionName) {
       case 'upload':

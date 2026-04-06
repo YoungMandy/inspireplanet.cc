@@ -17,7 +17,7 @@ import {
   verifyPassword,
   generateJwtToken,
   verifyJwtToken,
-  getFuntionNameFromEvent,
+  getFunctionNameFromEvent,
 } from '../utils/server';
 // 注意：Netlify函数会自动加载.env文件，不需要手动配置dotenv
 
@@ -90,7 +90,7 @@ export async function handler(
   }
 
   try {
-    const functionName = getFuntionNameFromEvent(event);
+    const functionName = getFunctionNameFromEvent(event);
 
     switch (functionName) {
       case 'register':

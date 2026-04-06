@@ -29,7 +29,7 @@ import Loading from '@/components/Loading';
 import Empty from '@/components/Empty';
 import { useGlobalSnackbar } from '@/context/app';
 import { Meetup, MeetupLabelMap } from '../../netlify/functions/meetup';
-import { getUserId, getUserInfo, isUserLoggedIn } from '@/utils';
+import { getUserId, getUserInfo, isUserLoggedIn, isMeetupOwner } from '@/utils';
 import { formatDate, formatDateTime, isUpcomingEvent } from '../../utils/date';
 
 const MeetupDetail: React.FC = () => {
@@ -167,21 +167,11 @@ const MeetupDetail: React.FC = () => {
       }
 
       const rsvps = response?.data?.rsvps || [];
-      // 处理数据格式
       const processedParticipants: Participant[] = rsvps.filter(
         (item) => `${item.meetup_id}` === meetupId
       );
 
       setParticipants(processedParticipants);
-
-      setMeetup((e) =>
-        e
-          ? {
-              ...e,
-              participant_count: processedParticipants?.length || 0,
-            }
-          : null
-      );
     } catch (err) {
       console.error('加载参与者信息失败:', err);
       showSnackbar.error('加载参与者信息失败，请稍后重试');
@@ -623,6 +613,18 @@ const MeetupDetail: React.FC = () => {
                     <ShareIcon />
                   </IconButton>
                 </Tooltip>
+                {/* 编辑按钮 - 只有活动创建者可以看到 */}
+                {isUserLoggedIn() && isMeetupOwner(meetup) && (
+                  <Tooltip title="编辑活动">
+                    <IconButton
+                      component={Link}
+                      to={`/edit-meetup?id=${meetup.id}`}
+                      sx={{ ml: 2, color: 'primary.main' }}
+                    >
+                      ✏️
+                    </IconButton>
+                  </Tooltip>
+                )}
               </div>
 
               {isUpcomingMeetup && (

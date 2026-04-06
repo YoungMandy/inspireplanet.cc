@@ -1,8 +1,8 @@
 import { HttpHeaders } from '../types/http';
 import { getCommonHeaders } from '../../utils/http';
-import { getFuntionNameFromEvent, getDataFromEvent } from './action';
+import { getFunctionNameFromEvent, getDataFromEvent } from './action';
 
-export { getFuntionNameFromEvent, getDataFromEvent };
+export { getFunctionNameFromEvent, getDataFromEvent };
 
 /**
  * 从请求头中获取用户ID
