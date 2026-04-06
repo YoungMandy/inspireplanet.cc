@@ -120,7 +120,34 @@ class HttpClient {
     }
 
     if (!response.ok) {
-      // 处理HTTP错误
+      // 处理401未授权错误
+      if (response.status === 401) {
+        // 清除本地存储的认证信息
+        try {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userInfo');
+        } catch (e) {
+          console.error('Error clearing auth data:', e);
+        }
+        
+        // 跳转到登录页面
+        const currentPath = window.location.pathname;
+        const loginPath = '/login';
+        
+        // 避免在登录页面重复跳转
+        if (currentPath !== loginPath) {
+          window.location.href = `${loginPath}?redirect=${encodeURIComponent(currentPath)}`;
+        }
+        
+        return Promise.resolve({
+          success: false,
+          statusCode: 401,
+          error: '未授权，请重新登录',
+          detail: 'Unauthorized',
+        });
+      }
+
+      // 处理其他HTTP错误
       const errorMessage =
         data.error ||
         data.message ||
