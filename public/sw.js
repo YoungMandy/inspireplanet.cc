@@ -1,46 +1,47 @@
 const CACHE_NAME = 'inspire-planet-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/images/logo.png',
-];
+const urlsToCache = ['/', '/index.html', '/manifest.json', '/images/logo.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('Opened cache');
+      return cache.addAll(urlsToCache);
+    })
   );
 });
 
 self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  const url = new URL(request.url);
+
+  // 不缓存以下请求：
+  // 1. chrome-extension等特殊协议
+  // 2. 非GET请求
+  // 3. 非http/https协议
+  if (!url.protocol.startsWith('http') || request.method !== 'GET') {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
+    caches.match(event.request).then((response) => {
+      if (response) {
+        return response;
+      }
+
+      return fetch(event.request).then((response) => {
+        if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
 
-        return fetch(event.request).then(
-          (response) => {
-            if(!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
+        const responseToCache = response.clone();
 
-            const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
 
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return response;
-          }
-        );
-      })
+        return response;
+      });
+    })
   );
 });
 
