@@ -1,5 +1,31 @@
 const CACHE_NAME = 'inspire-planet-v1';
 const urlsToCache = ['/', '/index.html', '/manifest.json', '/images/logo.png'];
+const CACHE_EXPIRY_TIME = 60 * 60 * 1000; // 1小时缓存有效期
+
+// 缓存请求并添加时间戳
+const cacheWithTimestamp = async (cache, request, response) => {
+  const responseToCache = response.clone();
+  const headers = new Headers(responseToCache.headers);
+  headers.set('x-cache-timestamp', Date.now().toString());
+
+  const cachedResponse = new Response(responseToCache.body, {
+    status: responseToCache.status,
+    statusText: responseToCache.statusText,
+    headers: headers,
+  });
+
+  await cache.put(request, cachedResponse);
+};
+
+// 检查缓存是否过期
+const isCacheExpired = (response) => {
+  const timestamp = response.headers.get('x-cache-timestamp');
+  if (!timestamp) return true;
+
+  const cacheTime = parseInt(timestamp, 10);
+  const now = Date.now();
+  return now - cacheTime > CACHE_EXPIRY_TIME;
+};
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -36,7 +62,12 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
       if (response) {
-        return response;
+        // 检查缓存是否过期
+        if (!isCacheExpired(response)) {
+          return response;
+        } else {
+          console.log('Cache expired for:', request.url);
+        }
       }
 
       return fetch(event.request).then((response) => {
@@ -44,10 +75,8 @@ self.addEventListener('fetch', (event) => {
           return response;
         }
 
-        const responseToCache = response.clone();
-
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+          cacheWithTimestamp(cache, event.request, response);
         });
 
         return response;
@@ -69,4 +98,11 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+});
+
+// 监听消息，处理客户端的更新检查
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
