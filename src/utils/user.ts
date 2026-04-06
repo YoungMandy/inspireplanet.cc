@@ -87,3 +87,23 @@ export const logoutUser = () => {
   localStorage.removeItem('authToken');
   localStorage.removeItem('userInfo');
 };
+
+/**
+ * 判断当前用户是否是活动的创建者
+ * @param meetup 活动对象
+ * @returns boolean 是否是活动创建者
+ */
+export const isMeetupOwner = (meetup: {
+  creator?: string;
+  user_id?: string;
+}): boolean => {
+  const curUser = getUserInfo();
+  if (!curUser) return false;
+
+  return (
+    meetup.creator === curUser?.username ||
+    meetup.creator == curUser?.id ||
+    meetup.user_id === curUser?.username ||
+    meetup.user_id == curUser?.id
+  );
+};

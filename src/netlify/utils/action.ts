@@ -6,10 +6,10 @@ import { NetlifyEvent } from '../types/http';
  * @param event Netlify事件对象
  * @returns action参数值
  */
-export function getFuntionNameFromEvent(
+export function getFunctionNameFromEvent(
   event: NetlifyEvent
 ): string | undefined {
-  console.log('🔍 getFuntionNameFromEvent called with:', {
+  console.log('🔍 getFunctionNameFromEvent called with:', {
     method: event.httpMethod,
     query: event.queryStringParameters,
     hasBody: !!event.body,

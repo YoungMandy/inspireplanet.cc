@@ -4,7 +4,7 @@ import {
   createErrorResponse,
   createSuccessResponse,
   getDataFromEvent,
-  getFuntionNameFromEvent,
+  getFunctionNameFromEvent,
 } from '../utils/server';
 import {
   SubmitSurveyRequest,
@@ -14,7 +14,7 @@ import {
 
 export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
   try {
-    const action = getFuntionNameFromEvent(event) as
+    const action = getFunctionNameFromEvent(event) as
       | 'submit'
       | 'getBySurveyId'
       | 'getMySubmissions'

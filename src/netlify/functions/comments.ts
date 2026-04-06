@@ -7,7 +7,7 @@ import {
   createErrorResponse,
   handleOptionsRequest,
   getUserIdFromAuth,
-  getFuntionNameFromEvent,
+  getFunctionNameFromEvent,
   getDataFromEvent,
 } from '../utils/server';
 
@@ -47,7 +47,7 @@ export async function handler(
   }
 
   try {
-    const functionName = getFuntionNameFromEvent(event);
+    const functionName = getFunctionNameFromEvent(event);
 
     switch (functionName) {
       case 'create':

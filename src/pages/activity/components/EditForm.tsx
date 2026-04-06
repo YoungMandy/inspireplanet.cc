@@ -22,10 +22,11 @@ interface FormErrors {
 
 interface EditFormProps {
   initialValues: Meetup;
-  onSubmit: (data: any) => Promise<void>;
-  submitText: string;
+  onSubmit?: (data: any) => Promise<void>;
+  submitText?: string;
   isLoading: boolean;
   existingQrUrl?: string;
+  viewOnly?: boolean;
 }
 
 // 格式化日期时间为datetime-local格式
@@ -73,6 +74,7 @@ const EditForm: React.FC<EditFormProps> = ({
   submitText,
   isLoading,
   existingQrUrl = '',
+  viewOnly = false,
 }) => {
   const { isMobile } = useResponsive();
   const showSnackbar = useGlobalSnackbar();
@@ -86,6 +88,14 @@ const EditForm: React.FC<EditFormProps> = ({
     setFormValues(initialValues);
   }, [initialValues]);
 
+  useEffect(() => {
+    if (existingQrUrl) {
+      setQrPreview(existingQrUrl);
+    } else if (initialValues.cover) {
+      setQrPreview(initialValues.cover);
+    }
+  }, [existingQrUrl, initialValues.cover]);
+
   // 表单验证函数
   const validateForm = (values: Meetup): FormErrors => {
     const newErrors: FormErrors = {};
@@ -97,7 +107,7 @@ const EditForm: React.FC<EditFormProps> = ({
     if (!values.datetime) newErrors.datetime = '此字段为必填项';
     if (!values.creator?.trim()) newErrors.creator = '此字段为必填项';
     if (!values.wechat_id?.trim()) newErrors.wechat_id = '此字段为必填项';
-    if (!values.cover) newErrors.cover = '请上传活动群二维码';
+    if (!values.cover && !existingQrUrl) newErrors.cover = '请上传活动群二维码';
 
     // 日期时间验证
     if (values.datetime && new Date(values.datetime) <= new Date()) {
@@ -260,7 +270,9 @@ const EditForm: React.FC<EditFormProps> = ({
       };
 
       // 调用外部提交函数
-      await onSubmit(submitData);
+      if (onSubmit) {
+        await onSubmit(submitData);
+      }
     } catch (error) {
       showSnackbar.error(
         '操作失败: ' + (error instanceof Error ? error.message : '未知错误')
@@ -299,6 +311,7 @@ const EditForm: React.FC<EditFormProps> = ({
               required
               placeholder="输入活动标题"
               size={isMobile ? 'small' : 'medium'}
+              InputProps={{ readOnly: viewOnly }}
             />
           </Box>
           <Box sx={{ mb: 3 }}>
@@ -319,6 +332,7 @@ const EditForm: React.FC<EditFormProps> = ({
               multiline
               minRows={4}
               size={isMobile ? 'small' : 'medium'}
+              InputProps={{ readOnly: viewOnly }}
             />
           </Box>
           <Box sx={{ mb: 3 }}>
@@ -337,6 +351,7 @@ const EditForm: React.FC<EditFormProps> = ({
               required
               select
               size={isMobile ? 'small' : 'medium'}
+              InputProps={{ readOnly: viewOnly }}
             >
               {MeetupList.map((item) => (
                 <MenuItem key={item.value} value={item.value}>
@@ -370,11 +385,12 @@ const EditForm: React.FC<EditFormProps> = ({
                 onChange={handleInputChange}
                 required
                 size={isMobile ? 'small' : 'medium'}
+                InputProps={{ readOnly: viewOnly }}
               />
             </Box>
 
             {/* 快捷时间选择 - 仅在创建时显示 */}
-            {!existingQrUrl && (
+            {!existingQrUrl && !viewOnly && (
               <Box sx={{ mb: 3 }}>
                 <Typography
                   variant="subtitle2"
@@ -425,6 +441,7 @@ const EditForm: React.FC<EditFormProps> = ({
                     onChange={handleInputChange}
                     placeholder="线下活动请填写具体地址，线上活动可填写平台名称"
                     size={isMobile ? 'small' : 'medium'}
+                    InputProps={{ readOnly: viewOnly }}
                   />
                 </Box>
               </Grid>
@@ -442,6 +459,7 @@ const EditForm: React.FC<EditFormProps> = ({
                     onChange={handleInputChange}
                     placeholder="例如：2"
                     size={isMobile ? 'small' : 'medium'}
+                    InputProps={{ readOnly: viewOnly }}
                   />
                 </Box>
               </Grid>
@@ -460,6 +478,7 @@ const EditForm: React.FC<EditFormProps> = ({
                 onChange={handleInputChange}
                 placeholder="不限制可留空"
                 size={isMobile ? 'small' : 'medium'}
+                InputProps={{ readOnly: viewOnly }}
               />
             </Box>
           </CardContent>
@@ -493,6 +512,7 @@ const EditForm: React.FC<EditFormProps> = ({
               required
               placeholder="您的姓名"
               size={isMobile ? 'small' : 'medium'}
+              InputProps={{ readOnly: viewOnly }}
             />
           </Box>
           <Box sx={{ mb: 3 }}>
@@ -511,6 +531,7 @@ const EditForm: React.FC<EditFormProps> = ({
               required
               placeholder="请填写微信号，用于活动沟通"
               size={isMobile ? 'small' : 'medium'}
+              InputProps={{ readOnly: viewOnly }}
             />
           </Box>
 
@@ -520,17 +541,23 @@ const EditForm: React.FC<EditFormProps> = ({
             </Typography>
             <Box
               className={`qr-upload ${dragover ? 'dragover' : ''}`}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={
+                viewOnly ? undefined : () => fileInputRef.current?.click()
+              }
               onDragOver={(e) => {
-                e.preventDefault();
-                setDragover(true);
+                if (!viewOnly) {
+                  e.preventDefault();
+                  setDragover(true);
+                }
               }}
               onDragLeave={() => setDragover(false)}
               onDrop={(e) => {
-                e.preventDefault();
-                setDragover(false);
-                if (e.dataTransfer.files.length > 0)
-                  handleQRFile(e.dataTransfer.files[0]);
+                if (!viewOnly) {
+                  e.preventDefault();
+                  setDragover(false);
+                  if (e.dataTransfer.files.length > 0)
+                    handleQRFile(e.dataTransfer.files[0]);
+                }
               }}
               sx={{
                 border: !!errors['cover']
@@ -539,13 +566,15 @@ const EditForm: React.FC<EditFormProps> = ({
                 borderRadius: 1,
                 padding: '2rem',
                 textAlign: 'center',
-                cursor: 'pointer',
+                cursor: viewOnly ? 'default' : 'pointer',
                 backgroundColor: dragover
                   ? 'rgba(255, 127, 80, 0.05)'
                   : 'transparent',
                 transition: 'all 0.2s',
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 127, 80, 0.05)',
+                  backgroundColor: viewOnly
+                    ? 'transparent'
+                    : 'rgba(255, 127, 80, 0.05)',
                 },
               }}
             >
@@ -554,7 +583,11 @@ const EditForm: React.FC<EditFormProps> = ({
                 type="file"
                 accept="image/*"
                 onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) {
+                  if (
+                    !viewOnly &&
+                    e.target.files &&
+                    e.target.files.length > 0
+                  ) {
                     handleQRFile(e.target.files[0]);
                   }
                 }}
@@ -575,35 +608,39 @@ const EditForm: React.FC<EditFormProps> = ({
               ) : (
                 <>
                   <Typography variant="body2" sx={{ mb: 1 }}>
-                    请点击上传群二维码
+                    {viewOnly ? '活动群二维码' : '请点击上传群二维码'}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    支持拖拽上传，JPG/PNG格式
-                  </Typography>
+                  {!viewOnly && (
+                    <Typography variant="caption" color="text.secondary">
+                      支持拖拽上传，JPG/PNG格式
+                    </Typography>
+                  )}
                 </>
               )}
             </Box>
           </Box>
         </Box>
 
-        <Button
-          type="submit"
-          variant="contained"
-          fullWidth
-          disabled={isLoading}
-          sx={{
-            py: 1.5,
-            fontSize: '1.1rem',
-            fontWeight: 600,
-            boxShadow: '0 4px 12px rgba(255, 127, 80, 0.3)',
-            '&:disabled': {
-              bgcolor: '#ccc',
-              boxShadow: 'none',
-            },
-          }}
-        >
-          {isLoading ? '处理中...' : submitText}
-        </Button>
+        {!viewOnly && onSubmit && (
+          <Button
+            type="submit"
+            variant="contained"
+            fullWidth
+            disabled={isLoading}
+            sx={{
+              py: 1.5,
+              fontSize: '1.1rem',
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(255, 127, 80, 0.3)',
+              '&:disabled': {
+                bgcolor: '#ccc',
+                boxShadow: 'none',
+              },
+            }}
+          >
+            {isLoading ? '处理中...' : submitText}
+          </Button>
+        )}
       </form>
     </>
   );

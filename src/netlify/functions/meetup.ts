@@ -11,7 +11,7 @@ import {
   createErrorResponse,
   handleOptionsRequest,
   getUserIdFromAuth,
-  getFuntionNameFromEvent,
+  getFunctionNameFromEvent,
   getDataFromEvent,
 } from '../utils/server';
 
@@ -83,7 +83,7 @@ export async function handler(
   }
 
   try {
-    const functionName = getFuntionNameFromEvent(event);
+    const functionName = getFunctionNameFromEvent(event);
 
     switch (functionName) {
       case 'create':
@@ -194,9 +194,22 @@ async function handleGetById(event: NetlifyEvent): Promise<NetlifyResponse> {
       return createErrorResponse('活动不存在', 404);
     }
 
+    const meetupData = data[0];
+
+    const { data: rsvps, error: rsvpsError } = await supabase
+      .from('meetup_rsvps')
+      .select('meetup_id')
+      .eq('meetup_id', id)
+      .eq('status', 'confirmed');
+
+    let participantCount = 0;
+    if (!rsvpsError && rsvps && Array.isArray(rsvps)) {
+      participantCount = rsvps.length;
+    }
+
     const meetup: Meetup = {
-      ...data[0],
-      participant_count: 0,
+      ...meetupData,
+      participant_count: participantCount,
     };
 
     return createSuccessResponse({ meetups: [meetup] });

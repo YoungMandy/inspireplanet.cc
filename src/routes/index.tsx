@@ -117,7 +117,6 @@ const router = createBrowserRouter(
         { path: 'cards', element: createLazyRoute(<Cards />) },
         { path: 'meetups', element: createLazyRoute(<Meetups />) },
         { path: 'people', element: createLazyRoute(<PeopleDirectory />) },
-        { path: 'survey/:id', element: createLazyRoute(<SurveyDetail />) },
         { path: 'weekly-cards', element: createLazyRoute(<WeeklyCards />) },
         {
           path: 'weekly-cards/:episode',
@@ -148,6 +147,10 @@ const router = createBrowserRouter(
         {
           path: 'survey-edit/:id',
           element: createProtectedRoute(<SurveyEdit />),
+        },
+        {
+          path: 'survey/:id',
+          element: createProtectedRoute(<SurveyDetail />),
         },
         {
           path: 'create-meetup',
