@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 import { MeetupStatus, Participant } from '../../netlify/types';
 
-import { escapeHtml, formatDate, getUserInfo } from '@/utils';
+import { escapeHtml, formatDate, getUserInfo, isMeetupOwner } from '@/utils';
 import { useGlobalSnackbar } from '@/context/app';
 import useResponsive from '@/hooks/useResponsive';
 import Empty from '@/components/Empty';
@@ -91,14 +91,13 @@ const MyMeetups: React.FC = () => {
       }
 
       const meetups = response.data?.meetups || [];
-      const curUser = getUserInfo() || {};
-      const userMeetups = meetups.filter(
-        (meetup: Meetup) =>
-          meetup.creator === curUser?.username ||
-          meetup.creator == curUser?.id ||
-          meetup.user_id === curUser?.username ||
-          meetup.user_id == curUser?.id
-      );
+      const userMeetups = meetups
+        .filter((meetup: Meetup) => isMeetupOwner(meetup))
+        .sort((a: Meetup, b: Meetup) => {
+          const timeA = new Date(a.datetime).getTime();
+          const timeB = new Date(b.datetime).getTime();
+          return timeB - timeA;
+        });
       setAllMeetups(userMeetups as Meetup[]);
 
       await loadMyRsvps(meetups);
@@ -168,7 +167,13 @@ const MyMeetups: React.FC = () => {
         )
         .filter(Boolean) as Meetup[];
 
-      setRsvpMeetups(finalMeetups);
+      const sortedFinalMeetups = finalMeetups.sort((a, b) => {
+        const timeA = new Date(a.datetime).getTime();
+        const timeB = new Date(b.datetime).getTime();
+        return timeB - timeA;
+      });
+
+      setRsvpMeetups(sortedFinalMeetups);
     } catch (e) {
       // 静默错误，保持页面可用
     }
