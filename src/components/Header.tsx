@@ -68,6 +68,9 @@ const Header: React.FC<HeaderProps> = ({
   );
   const [activitiesMenuAnchor, setActivitiesMenuAnchor] =
     useState<HTMLElement | null>(null);
+  const [cardsMenuAnchor, setCardsMenuAnchor] = useState<HTMLElement | null>(
+    null
+  );
   const [unread, setUnread] = useState(0);
 
   // 路由和响应式
@@ -151,6 +154,11 @@ const Header: React.FC<HeaderProps> = ({
     { path: '/surveys', label: '调查问卷' },
   ];
 
+  const cardsMenuItems: NavItem[] = [
+    { path: '/cards', label: '卡片广场' },
+    { path: '/create-card', label: '创建卡片' },
+  ];
+
   // 下拉菜单配置
   const dropdownMenus: DropdownMenu[] = [
     {
@@ -159,6 +167,13 @@ const Header: React.FC<HeaderProps> = ({
       items: getActivitiesMenuItems(),
       anchor: activitiesMenuAnchor,
       setAnchor: setActivitiesMenuAnchor,
+    },
+    {
+      label: '金句卡片',
+      icon: <CardMembership fontSize="small" />,
+      items: cardsMenuItems,
+      anchor: cardsMenuAnchor,
+      setAnchor: setCardsMenuAnchor,
     },
     ...(isOrganizer()
       ? [
@@ -424,6 +439,11 @@ const Header: React.FC<HeaderProps> = ({
             '活动',
             <CalendarToday fontSize="small" />,
             getActivitiesMenuItems()
+          )}
+          {renderMobileMenuItemGroup(
+            '金句卡片',
+            <CardMembership fontSize="small" />,
+            cardsMenuItems
           )}
           {isOrganizer() &&
             renderMobileMenuItemGroup(

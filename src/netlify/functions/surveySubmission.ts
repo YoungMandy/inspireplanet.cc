@@ -335,16 +335,16 @@ async function handleUpdate(event: NetlifyEvent): Promise<NetlifyResponse> {
       return createErrorResponse('提交记录不存在', 404);
     }
 
-    // 删除旧答案
-    await supabase.from('survey_answers').delete().eq('submission_id', id);
-
-    // 创建新答案
+    // 使用 upsert 更新或插入答案（不删除任何数据）
     const answerPromises = answers.map((answer: QuestionAnswer) => {
-      return supabase.from('survey_answers').insert({
-        submission_id: id,
-        question_id: answer.questionId,
-        value: answer.value,
-      });
+      return supabase.from('survey_answers').upsert(
+        {
+          submission_id: id,
+          question_id: answer.questionId,
+          value: answer.value,
+        },
+        { onConflict: 'submission_id,question_id' }
+      );
     });
 
     const answerResults = await Promise.all(answerPromises);
