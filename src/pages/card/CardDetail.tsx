@@ -527,37 +527,40 @@ const CardDetail: React.FC = () => {
                       mt: 4,
                       display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'center',
-                      flexDirection: isMobile ? 'column' : 'row',
+                      alignItems: 'flex-start',
+                      flexDirection: 'row',
                       gap: 2,
                     }}
                   >
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: getFontColorForGradient(
-                          card?.gradient_class || 'card-gradient-1'
-                        ),
-                        opacity: 0.8,
-                      }}
-                    >
-                      {card?.creator
-                        ? `— ${sanitizeContent(card.creator)}`
-                        : ''}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: getFontColorForGradient(
-                          card?.gradient_class || 'card-gradient-1'
-                        ),
-                        opacity: 0.8,
-                      }}
-                    >
-                      {card
-                        ? new Date(card.created).toLocaleDateString('zh-CN')
-                        : ''}
-                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: getFontColorForGradient(
+                            card?.gradient_class || 'card-gradient-1'
+                          ),
+                          opacity: 0.8,
+                        }}
+                      >
+                        {card?.creator
+                          ? `— ${sanitizeContent(card.creator)}`
+                          : ''}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: getFontColorForGradient(
+                            card?.gradient_class || 'card-gradient-1'
+                          ),
+                          opacity: 0.6,
+                          mt: 0.5,
+                        }}
+                      >
+                        {card
+                          ? new Date(card.created).toLocaleDateString('zh-CN')
+                          : ''}
+                      </Typography>
+                    </Box>
                   </Box>
                 </div>
               </div>

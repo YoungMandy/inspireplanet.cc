@@ -85,6 +85,65 @@ async function loadHtml2Canvas(): Promise<boolean> {
  * @param filenamePrefix 文件名前缀
  * @returns Promise<boolean> 下载是否成功
  */
+async function loadQRCodeLibrary(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof (window as any).QRCode !== 'undefined') {
+      resolve(true);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = '/scripts/qrcode.min.js';
+    script.onload = () => {
+      if (
+        typeof (window as any).QRCode !== 'undefined' &&
+        typeof (window as any).QRCode.toCanvas !== 'function'
+      ) {
+        (window as any).QRCode.toCanvas = function (
+          canvas: HTMLCanvasElement,
+          text: string,
+          opts: any = {}
+        ) {
+          return new Promise((resolve) => {
+            const temp = document.createElement('div');
+            temp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+            document.body.appendChild(temp);
+            try {
+              const size = opts.width || 256;
+              const colorDark = opts.colorDark || '#000000';
+              const colorLight = opts.colorLight || '#ffffff';
+              const qr = new (window as any).QRCode(temp, {
+                text: text,
+                width: size,
+                height: size,
+                colorDark: colorDark,
+                colorLight: colorLight,
+                correctLevel: (window as any).QRCode.CorrectLevel?.H || 1,
+              });
+              const qrCanvas = temp.querySelector('canvas');
+              const ctx = canvas.getContext('2d');
+              if (qrCanvas && ctx) {
+                canvas.width = size;
+                canvas.height = size;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(qrCanvas, 0, 0);
+              }
+              document.body.removeChild(temp);
+              resolve(canvas);
+            } catch {
+              document.body.removeChild(temp);
+              resolve(null);
+            }
+          });
+        };
+      }
+      resolve(true);
+    };
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
 export async function downloadCard(
   element: HTMLElement | null | undefined,
   filenamePrefix?: string
@@ -118,6 +177,7 @@ export async function downloadCard(
     clone.style.margin = '0';
     clone.style.width = '420px';
     clone.style.boxSizing = 'border-box';
+    clone.style.position = 'relative';
 
     // 确保渐变背景样式被正确应用
     const computedStyle = window.getComputedStyle(element);
@@ -126,6 +186,37 @@ export async function downloadCard(
     clone.style.backgroundSize = computedStyle.backgroundSize;
     clone.style.backgroundPosition = computedStyle.backgroundPosition;
     clone.style.backgroundRepeat = computedStyle.backgroundRepeat;
+
+    // 在右下角添加二维码
+    const qrCodeLoaded = await loadQRCodeLibrary();
+    if (qrCodeLoaded && typeof (window as any).QRCode.toCanvas === 'function') {
+      const qrContainer = document.createElement('div');
+      qrContainer.style.position = 'absolute';
+      qrContainer.style.right = '16px';
+      qrContainer.style.bottom = '16px';
+      qrContainer.style.width = '60px';
+      qrContainer.style.height = '60px';
+
+      const qrCanvas = document.createElement('canvas');
+      qrCanvas.width = 120;
+      qrCanvas.height = 120;
+
+      const qrColor = computedStyle.color || '#333333';
+
+      await (window as any).QRCode.toCanvas(qrCanvas, window.location.href, {
+        width: 120,
+        height: 120,
+        margin: 1,
+        colorDark: qrColor,
+        colorLight: '#ffffff',
+        correctLevel: (window as any).QRCode.CorrectLevel?.M || 0,
+      });
+
+      qrCanvas.style.width = '100%';
+      qrCanvas.style.height = '100%';
+      qrContainer.appendChild(qrCanvas);
+      clone.appendChild(qrContainer);
+    }
 
     sandbox.appendChild(clone);
     document.body.appendChild(sandbox);
@@ -140,7 +231,7 @@ export async function downloadCard(
               resolve();
             } else {
               img.onload = () => resolve();
-              img.onerror = () => resolve(); // 即使图片加载失败也继续
+              img.onerror = () => resolve();
             }
           })
       )
