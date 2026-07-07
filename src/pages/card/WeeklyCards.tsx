@@ -243,7 +243,13 @@ const WeeklyCards: React.FC = () => {
         const computedStyle = window.getComputedStyle(original);
         const qrColor = computedStyle.color || '#333333';
 
-        await (window as any).QRCode.toCanvas(qrCanvas, window.location.href, {
+        const card = cards.find(c => c.id === cardId);
+        const episodeStr = card?.episode ? card.episode.toLowerCase() : '';
+        const targetUrl = episodeStr 
+          ? `${window.location.origin}/weekly-cards/${episodeStr}` 
+          : window.location.href;
+
+        await (window as any).QRCode.toCanvas(qrCanvas, targetUrl, {
           width: 140,
           height: 140,
           margin: 0,
