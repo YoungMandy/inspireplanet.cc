@@ -116,6 +116,8 @@ const applyExportTypography = (
   const quoteEl = clone.querySelector('.card-quote') as HTMLElement | null;
   const detailBox = clone.querySelector('.card-detail-box') as HTMLElement | null;
   const footerBox = clone.querySelector('.card-footer-box') as HTMLElement | null;
+  const footerPrimary = clone.querySelector('.card-footer-primary') as HTMLElement | null;
+  const footerMeta = clone.querySelector('.card-footer-meta') as HTMLElement | null;
 
   if (titleEl) {
     titleEl.style.fontSize = `${typography.title}px`;
@@ -160,7 +162,17 @@ const applyExportTypography = (
   if (footerBox) {
     footerBox.style.marginTop = '28px';
     footerBox.style.paddingRight = `${EXPORT_QR_SIZE + 24}px`;
-    footerBox.style.fontSize = `${Math.max(14, typography.detail - 2)}px`;
+    footerBox.style.alignItems = 'flex-start';
+  }
+
+  if (footerPrimary) {
+    footerPrimary.style.fontSize = `${Math.max(15, typography.detail)}px`;
+    footerPrimary.style.lineHeight = `${Math.round(Math.max(15, typography.detail) * 1.4)}px`;
+  }
+
+  if (footerMeta) {
+    footerMeta.style.fontSize = `${Math.max(13, typography.detail - 2)}px`;
+    footerMeta.style.lineHeight = `${Math.round(Math.max(13, typography.detail - 2) * 1.4)}px`;
   }
 };
 
@@ -748,22 +760,28 @@ const WeeklyCards: React.FC = () => {
                                   sx={{
                                     mt: 'auto',
                                     display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    gap: 2,
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-start',
+                                    gap: 0.5,
                                   }}
                                 >
                                   <Typography
+                                    className="card-footer-primary"
                                     variant="caption"
-                                    sx={{ color: fontColor, opacity: 0.8 }}
+                                    sx={{
+                                      color: fontColor,
+                                      fontWeight: 600,
+                                      opacity: 0.9,
+                                    }}
                                   >
-                                    — {card.name}
+                                    {card.name ? `${card.name}的启发卡片` : '启发卡片'}
                                   </Typography>
                                   <Typography
+                                    className="card-footer-meta"
                                     variant="caption"
-                                    sx={{ color: fontColor, opacity: 0.8 }}
+                                    sx={{ color: fontColor, opacity: 0.72 }}
                                   >
-                                    {formatBeijingDate(card.created)}
+                                    启发星球 {card.episode} · {formatBeijingDate(card.created)}
                                   </Typography>
                                 </Box>
                               </Paper>
