@@ -195,6 +195,7 @@ const WeeklyCards: React.FC = () => {
       if (!original) return;
 
       const exportWidth = 600;
+      const targetHeight = 800; // 3:4 比例的最佳高度 (最终输出是 1200x1600)
 
       const wrapper = document.createElement('div');
       wrapper.style.position = 'fixed';
@@ -205,9 +206,12 @@ const WeeklyCards: React.FC = () => {
 
       const clone = original.cloneNode(true) as HTMLElement;
       clone.style.width = `${exportWidth}px`;
+      clone.style.minHeight = `${targetHeight}px`; // 保证最低是 3:4，如果文字特别长会自动往下延展
       clone.style.height = 'auto';
       clone.style.transform = 'none';
       clone.style.boxShadow = 'none';
+      // 为了让生成的卡片内容居中分布，增强 flex 布局
+      clone.style.justifyContent = 'space-between';
 
       const dlBtn = clone.querySelector('.download-btn') as HTMLElement | null;
       if (dlBtn) dlBtn.style.display = 'none';
@@ -483,6 +487,8 @@ const WeeklyCards: React.FC = () => {
                                     sx={{
                                       color: fontColor,
                                       whiteSpace: 'pre-line',
+                                      fontSize: '16px',
+                                      lineHeight: '26px',
                                     }}
                                   >
                                     {card.quote}
@@ -493,10 +499,21 @@ const WeeklyCards: React.FC = () => {
 
                                 <Box
                                   sx={{
-                                    fontSize: '1rem',
-                                    lineHeight: 1.6,
+                                    fontSize: '16px',
+                                    lineHeight: '26px', // 使用具体像素值解决 html2canvas 换行重叠 bug
                                     mb: 3,
                                     flexGrow: 1,
+                                    wordBreak: 'break-word',
+                                    '& p': {
+                                      margin: '0 0 16px 0',
+                                      lineHeight: '26px',
+                                    },
+                                    '& br': {
+                                      display: 'block',
+                                      content: '""',
+                                      marginTop: '8px',
+                                      lineHeight: '26px',
+                                    }
                                   }}
                                 >
                                   <div
