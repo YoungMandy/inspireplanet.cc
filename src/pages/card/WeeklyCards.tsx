@@ -194,8 +194,11 @@ const WeeklyCards: React.FC = () => {
       const original = document.getElementById(`card-${cardId}`);
       if (!original) return;
 
+      const card = cards.find(c => c.id === cardId);
+      if (!card) return;
+
       const exportWidth = 600;
-      const targetHeight = 800; // 3:4 比例的最佳高度 (最终输出是 1200x1600)
+      const targetHeight = 800; // 3:4 比例
 
       const wrapper = document.createElement('div');
       wrapper.style.position = 'fixed';
@@ -206,12 +209,72 @@ const WeeklyCards: React.FC = () => {
 
       const clone = original.cloneNode(true) as HTMLElement;
       clone.style.width = `${exportWidth}px`;
-      clone.style.minHeight = `${targetHeight}px`; // 保证最低是 3:4，如果文字特别长会自动往下延展
+      clone.style.minHeight = `${targetHeight}px`; // 强行拉到3:4
       clone.style.height = 'auto';
       clone.style.transform = 'none';
       clone.style.boxShadow = 'none';
-      // 为了让生成的卡片内容居中分布，增强 flex 布局
-      clone.style.justifyContent = 'space-between';
+      clone.style.justifyContent = 'center'; // 垂直居中整个内容块
+
+      // 检测字数并动态放大字体
+      const textLength = (card.quote || '').length + (card.detail || '').replace(/<[^>]+>/g, '').length;
+      
+      const quoteEl = clone.querySelector('.card-quote') as HTMLElement;
+      const detailBox = clone.querySelector('.card-detail-box') as HTMLElement;
+      const footerBox = clone.querySelector('.card-footer-box') as HTMLElement;
+
+      // 去掉之前分散排版的样式，让所有元素紧凑靠拢在一起，方便整体居中
+      if (detailBox) detailBox.style.flexGrow = '0';
+      if (footerBox) footerBox.style.marginTop = '24px'; 
+
+      // 动态阶梯式计算字体大小，完美适配不同字数
+      let quoteFontSize = '16px';
+      let quoteLineHeight = '26px';
+      let detailFontSize = '16px';
+      let detailLineHeight = '26px';
+
+      if (textLength < 40) {
+        // 极短句（超大字报）
+        quoteFontSize = '28px';
+        quoteLineHeight = '44px';
+        detailFontSize = '20px';
+        detailLineHeight = '34px';
+      } else if (textLength < 80) {
+        // 短句（大字报）
+        quoteFontSize = '24px';
+        quoteLineHeight = '38px';
+        detailFontSize = '18px';
+        detailLineHeight = '30px';
+      } else if (textLength < 150) {
+        // 中等长度（正常偏大）
+        quoteFontSize = '20px';
+        quoteLineHeight = '32px';
+        detailFontSize = '16px';
+        detailLineHeight = '28px';
+      } else if (textLength > 300) {
+        // 超长文本（稍微缩小字体，防止图片变得过长脱离 3:4 比例）
+        quoteFontSize = '15px';
+        quoteLineHeight = '24px';
+        detailFontSize = '14px';
+        detailLineHeight = '24px';
+      }
+
+      if (quoteEl) {
+        quoteEl.style.fontSize = quoteFontSize;
+        quoteEl.style.lineHeight = quoteLineHeight;
+      }
+      if (detailBox) {
+        detailBox.style.fontSize = detailFontSize;
+        detailBox.style.lineHeight = detailLineHeight;
+        const ps = detailBox.querySelectorAll('p');
+        ps.forEach(p => {
+          (p as HTMLElement).style.lineHeight = detailLineHeight;
+          (p as HTMLElement).style.marginBottom = `${parseInt(detailFontSize)}px`; // 间距跟随字体缩放
+        });
+        const brs = detailBox.querySelectorAll('br, span[style*="height: 8px"]');
+        brs.forEach(br => {
+           (br as HTMLElement).style.lineHeight = detailLineHeight;
+        });
+      }
 
       const dlBtn = clone.querySelector('.download-btn') as HTMLElement | null;
       if (dlBtn) dlBtn.style.display = 'none';
@@ -222,6 +285,17 @@ const WeeklyCards: React.FC = () => {
         img.style.width = '100%';
         img.style.height = 'auto';
         img.style.objectFit = 'contain';
+      });
+
+      // 彻底修复 html2canvas 的 <br> 换行文字重叠 bug
+      // 将 clone 节点里的所有 <br> 替换成块级元素，强行撑开高度
+      const brs = clone.querySelectorAll('br');
+      brs.forEach(br => {
+        const spacer = document.createElement('span');
+        spacer.style.display = 'block';
+        spacer.style.width = '100%';
+        spacer.style.height = '8px'; // 换行间距
+        br.parentNode?.replaceChild(spacer, br);
       });
 
       wrapper.appendChild(clone);
@@ -483,21 +557,27 @@ const WeeklyCards: React.FC = () => {
                                   }}
                                 >
                                   <Typography
+                                    className="card-quote"
                                     variant="body1"
                                     sx={{
                                       color: fontColor,
-                                      whiteSpace: 'pre-line',
                                       fontSize: '16px',
                                       lineHeight: '26px',
                                     }}
                                   >
-                                    {card.quote}
+                                    {card.quote?.split('\n').map((line, i) => (
+                                      <React.Fragment key={i}>
+                                        {line}
+                                        {i !== card.quote.split('\n').length - 1 && <br />}
+                                      </React.Fragment>
+                                    ))}
                                   </Typography>
                                 </Box>
 
 
 
                                 <Box
+                                  className="card-detail-box"
                                   sx={{
                                     fontSize: '16px',
                                     lineHeight: '26px', // 使用具体像素值解决 html2canvas 换行重叠 bug
@@ -528,6 +608,7 @@ const WeeklyCards: React.FC = () => {
                                 </Box>
 
                                 <Box
+                                  className="card-footer-box"
                                   sx={{
                                     mt: 'auto',
                                     display: 'flex',
