@@ -34,22 +34,181 @@ export interface WeeklyCardItem extends WeeklyCard {
   gradient: string;
 }
 
+const EXPORT_WIDTH = 720;
+const EXPORT_HEIGHT = 1280;
+const EXPORT_PADDING = 56;
+const EXPORT_QR_SIZE = 96;
+
+type ExportTypography = {
+  title: number;
+  quote: number;
+  detail: number;
+};
+
+const waitForLayout = () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+
+const getInitialExportTypography = (card: WeeklyCardItem): ExportTypography => {
+  const detailText = (card.detail || '').replace(/<[^>]+>/g, '');
+  const textLength =
+    (card.title || '').length + (card.quote || '').length + detailText.length;
+
+  if (textLength < 60) {
+    return { title: 42, quote: 38, detail: 28 };
+  }
+
+  if (textLength < 120) {
+    return { title: 38, quote: 32, detail: 24 };
+  }
+
+  if (textLength < 220) {
+    return { title: 34, quote: 28, detail: 21 };
+  }
+
+  if (textLength < 360) {
+    return { title: 30, quote: 24, detail: 18 };
+  }
+
+  return { title: 27, quote: 21, detail: 16 };
+};
+
+const applyExportTypography = (
+  clone: HTMLElement,
+  typography: ExportTypography
+) => {
+  const titleEl = clone.querySelector('.card-title') as HTMLElement | null;
+  const quoteBox = clone.querySelector('.card-quote-box') as HTMLElement | null;
+  const quoteEl = clone.querySelector('.card-quote') as HTMLElement | null;
+  const detailBox = clone.querySelector('.card-detail-box') as HTMLElement | null;
+  const footerBox = clone.querySelector('.card-footer-box') as HTMLElement | null;
+
+  if (titleEl) {
+    titleEl.style.fontSize = `${typography.title}px`;
+    titleEl.style.lineHeight = `${Math.round(typography.title * 1.25)}px`;
+    titleEl.style.marginBottom = `${Math.round(typography.title * 0.55)}px`;
+  }
+
+  if (quoteBox) {
+    quoteBox.style.padding = `${Math.round(typography.quote * 0.65)}px`;
+    quoteBox.style.paddingLeft = `${Math.round(typography.quote * 1.2)}px`;
+    quoteBox.style.marginBottom = `${Math.round(typography.quote * 0.85)}px`;
+  }
+
+  if (quoteEl) {
+    quoteEl.style.fontSize = `${typography.quote}px`;
+    quoteEl.style.lineHeight = `${Math.round(typography.quote * 1.55)}px`;
+  }
+
+  if (detailBox) {
+    const detailLineHeight = Math.round(typography.detail * 1.65);
+    detailBox.style.fontSize = `${typography.detail}px`;
+    detailBox.style.lineHeight = `${detailLineHeight}px`;
+    detailBox.style.marginBottom = '0';
+    detailBox.style.flexGrow = '0';
+    detailBox.style.whiteSpace = 'normal';
+    detailBox.style.wordBreak = 'break-word';
+    detailBox.style.overflowWrap = 'break-word';
+
+    detailBox.querySelectorAll('p').forEach((p) => {
+      const el = p as HTMLElement;
+      el.style.lineHeight = `${detailLineHeight}px`;
+      el.style.margin = `0 0 ${Math.round(typography.detail * 0.9)}px 0`;
+    });
+
+    detailBox.querySelectorAll('li').forEach((li) => {
+      const el = li as HTMLElement;
+      el.style.lineHeight = `${detailLineHeight}px`;
+      el.style.marginBottom = `${Math.round(typography.detail * 0.45)}px`;
+    });
+  }
+
+  if (footerBox) {
+    footerBox.style.marginTop = '28px';
+    footerBox.style.paddingRight = `${EXPORT_QR_SIZE + 24}px`;
+    footerBox.style.fontSize = `${Math.max(14, typography.detail - 2)}px`;
+  }
+};
+
+const normalizeExportText = (clone: HTMLElement) => {
+  const contentBox = clone.querySelector('.card-export-content') as HTMLElement | null;
+  const detailBox = clone.querySelector('.card-detail-box') as HTMLElement | null;
+
+  if (contentBox) {
+    contentBox.style.display = 'flex';
+    contentBox.style.flex = '1 1 auto';
+    contentBox.style.flexDirection = 'column';
+    contentBox.style.justifyContent = 'center';
+    contentBox.style.minHeight = '0';
+    contentBox.style.overflow = 'hidden';
+  }
+
+  if (detailBox) {
+    detailBox.querySelectorAll('p, div, li, ul, ol').forEach((node) => {
+      const el = node as HTMLElement;
+      el.style.position = 'static';
+    });
+  }
+
+  clone.querySelectorAll('br').forEach((br) => {
+    const spacer = document.createElement('span');
+    spacer.style.display = 'block';
+    spacer.style.width = '100%';
+    spacer.style.height = '10px';
+    br.parentNode?.replaceChild(spacer, br);
+  });
+};
+
+const isExportOverflowing = (clone: HTMLElement) => {
+  const contentBox = clone.querySelector('.card-export-content') as HTMLElement | null;
+  const contentOverflow = contentBox
+    ? contentBox.scrollHeight > contentBox.clientHeight + 2
+    : false;
+
+  return contentOverflow || clone.scrollHeight > clone.clientHeight + 2;
+};
+
+const fitExportTypography = async (
+  clone: HTMLElement,
+  initialTypography: ExportTypography
+) => {
+  let typography = { ...initialTypography };
+  const minTypography: ExportTypography = { title: 22, quote: 18, detail: 14 };
+
+  applyExportTypography(clone, typography);
+  await waitForLayout();
+
+  while (
+    isExportOverflowing(clone) &&
+    (typography.title > minTypography.title ||
+      typography.quote > minTypography.quote ||
+      typography.detail > minTypography.detail)
+  ) {
+    typography = {
+      title: Math.max(minTypography.title, typography.title - 1),
+      quote: Math.max(minTypography.quote, typography.quote - 1),
+      detail: Math.max(minTypography.detail, typography.detail - 1),
+    };
+    applyExportTypography(clone, typography);
+    await waitForLayout();
+  }
+};
+
 const WeeklyCards: React.FC = () => {
   marked.setOptions({ breaks: true });
   const location = useLocation();
   const { episode: episodeFromPath } = useParams<{ episode?: string }>();
   const [cards, setCards] = useState<WeeklyCardItem[]>([]);
   const [filteredCards, setFilteredCards] = useState<WeeklyCardItem[]>([]);
-  const [selectedEpisode, setSelectedEpisode] = useState<string>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingAll, setLoadingAll] = useState<boolean>(false);
   const [showAll, setShowAll] = useState<boolean>(false);
   const [allPage, setAllPage] = useState<number>(1);
   const ALL_PAGE_SIZE = 10;
-  const [episodes, setEpisodes] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedQuery, setDebouncedQuery] = useState<string>('');
-  const { isMobile, isMedium } = useResponsive();
+  const { isMobile } = useResponsive();
   const showSnackbar = useGlobalSnackbar();
 
   // 定义错误状态
@@ -111,18 +270,6 @@ const WeeklyCards: React.FC = () => {
 
         setCards(normalizedCards);
         setFilteredCards(normalizedCards);
-
-        // 提取所有唯一的期数
-        const uniqueEpisodes = Array.from(
-          new Set(normalizedCards.map((card: WeeklyCard) => card.episode))
-        ).sort((a, b) => {
-          // 按期数降序排序
-          const numA = parseInt((a as string).replace(/\D/g, ''));
-          const numB = parseInt((b as string).replace(/\D/g, ''));
-          return numB - numA;
-        });
-
-        setEpisodes(uniqueEpisodes as string[]);
       } catch (error: any) {
         setError('加载数据失败，请稍后重试');
       } finally {
@@ -131,7 +278,7 @@ const WeeklyCards: React.FC = () => {
     };
 
     loadWeeklyCards();
-  }, [location.search]);
+  }, [location.search, episodeFromPath, showSnackbar]);
 
   // 输入去抖
   useEffect(() => {
@@ -141,16 +288,12 @@ const WeeklyCards: React.FC = () => {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  // 过滤卡片（期数 + 关键字）
+  // 过滤卡片（关键字）
   useEffect(() => {
     setAllPage(1); // 搜索变化时重置分页
-    const base =
-      selectedEpisode === 'all'
-        ? cards
-        : cards.filter((card) => card.episode === selectedEpisode);
 
     if (!debouncedQuery) {
-      setFilteredCards(base);
+      setFilteredCards(cards);
       return;
     }
 
@@ -170,12 +313,12 @@ const WeeklyCards: React.FC = () => {
       );
     };
 
-    setFilteredCards(base.filter(match));
-  }, [selectedEpisode, cards, debouncedQuery]);
+    setFilteredCards(cards.filter(match));
+  }, [cards, debouncedQuery]);
 
   const escapeRegExp = (str: string) =>
     str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const renderHighlighted = (text: string, query: string) => {
+  const renderHighlighted = (text = '', query: string) => {
     const q = query.trim();
     if (!q || q.length < 2) return text;
     const reg = new RegExp(`(${escapeRegExp(q)})`, 'gi');
@@ -190,91 +333,37 @@ const WeeklyCards: React.FC = () => {
   };
 
   const handleDownloadCard = async (cardId: string) => {
+    let wrapper: HTMLDivElement | null = null;
+
     try {
       const original = document.getElementById(`card-${cardId}`);
       if (!original) return;
 
-      const card = cards.find(c => c.id === cardId);
+      const card = cards.find((c) => c.id === cardId);
       if (!card) return;
 
-      const exportWidth = 600;
-      const targetHeight = 800; // 3:4 比例
-
-      const wrapper = document.createElement('div');
+      wrapper = document.createElement('div');
       wrapper.style.position = 'fixed';
       wrapper.style.left = '-10000px';
       wrapper.style.top = '0';
-      wrapper.style.width = `${exportWidth}px`;
+      wrapper.style.width = `${EXPORT_WIDTH}px`;
+      wrapper.style.height = `${EXPORT_HEIGHT}px`;
       wrapper.style.zIndex = '-1';
+      wrapper.style.pointerEvents = 'none';
 
       const clone = original.cloneNode(true) as HTMLElement;
-      clone.style.width = `${exportWidth}px`;
-      clone.style.minHeight = `${targetHeight}px`; // 强行拉到3:4
-      clone.style.height = 'auto';
+      clone.style.width = `${EXPORT_WIDTH}px`;
+      clone.style.height = `${EXPORT_HEIGHT}px`;
+      clone.style.minHeight = `${EXPORT_HEIGHT}px`;
+      clone.style.boxSizing = 'border-box';
+      clone.style.padding = `${EXPORT_PADDING}px`;
       clone.style.transform = 'none';
       clone.style.boxShadow = 'none';
-      clone.style.justifyContent = 'center'; // 垂直居中整个内容块
-
-      // 检测字数并动态放大字体
-      const textLength = (card.quote || '').length + (card.detail || '').replace(/<[^>]+>/g, '').length;
-      
-      const quoteEl = clone.querySelector('.card-quote') as HTMLElement;
-      const detailBox = clone.querySelector('.card-detail-box') as HTMLElement;
-      const footerBox = clone.querySelector('.card-footer-box') as HTMLElement;
-
-      // 去掉之前分散排版的样式，让所有元素紧凑靠拢在一起，方便整体居中
-      if (detailBox) detailBox.style.flexGrow = '0';
-      if (footerBox) footerBox.style.marginTop = '24px'; 
-
-      // 动态阶梯式计算字体大小，完美适配不同字数
-      let quoteFontSize = '16px';
-      let quoteLineHeight = '26px';
-      let detailFontSize = '16px';
-      let detailLineHeight = '26px';
-
-      if (textLength < 40) {
-        // 极短句（超大字报）
-        quoteFontSize = '28px';
-        quoteLineHeight = '44px';
-        detailFontSize = '20px';
-        detailLineHeight = '34px';
-      } else if (textLength < 80) {
-        // 短句（大字报）
-        quoteFontSize = '24px';
-        quoteLineHeight = '38px';
-        detailFontSize = '18px';
-        detailLineHeight = '30px';
-      } else if (textLength < 150) {
-        // 中等长度（正常偏大）
-        quoteFontSize = '20px';
-        quoteLineHeight = '32px';
-        detailFontSize = '16px';
-        detailLineHeight = '28px';
-      } else if (textLength > 300) {
-        // 超长文本（稍微缩小字体，防止图片变得过长脱离 3:4 比例）
-        quoteFontSize = '15px';
-        quoteLineHeight = '24px';
-        detailFontSize = '14px';
-        detailLineHeight = '24px';
-      }
-
-      if (quoteEl) {
-        quoteEl.style.fontSize = quoteFontSize;
-        quoteEl.style.lineHeight = quoteLineHeight;
-      }
-      if (detailBox) {
-        detailBox.style.fontSize = detailFontSize;
-        detailBox.style.lineHeight = detailLineHeight;
-        const ps = detailBox.querySelectorAll('p');
-        ps.forEach(p => {
-          (p as HTMLElement).style.lineHeight = detailLineHeight;
-          (p as HTMLElement).style.marginBottom = `${parseInt(detailFontSize)}px`; // 间距跟随字体缩放
-        });
-        const brs = detailBox.querySelectorAll('br, span[style*="height: 8px"]');
-        brs.forEach(br => {
-           (br as HTMLElement).style.lineHeight = detailLineHeight;
-        });
-      }
+      clone.style.overflow = 'hidden';
+      clone.style.display = 'flex';
+      clone.style.flexDirection = 'column';
+      clone.style.justifyContent = 'space-between';
+      clone.style.position = 'relative';
 
       const dlBtn = clone.querySelector('.download-btn') as HTMLElement | null;
       if (dlBtn) dlBtn.style.display = 'none';
@@ -287,16 +376,7 @@ const WeeklyCards: React.FC = () => {
         img.style.objectFit = 'contain';
       });
 
-      // 彻底修复 html2canvas 的 <br> 换行文字重叠 bug
-      // 将 clone 节点里的所有 <br> 替换成块级元素，强行撑开高度
-      const brs = clone.querySelectorAll('br');
-      brs.forEach(br => {
-        const spacer = document.createElement('span');
-        spacer.style.display = 'block';
-        spacer.style.width = '100%';
-        spacer.style.height = '8px'; // 换行间距
-        br.parentNode?.replaceChild(spacer, br);
-      });
+      normalizeExportText(clone);
 
       wrapper.appendChild(clone);
       document.body.appendChild(wrapper);
@@ -306,30 +386,30 @@ const WeeklyCards: React.FC = () => {
       if (qrCodeLoaded && typeof (window as any).QRCode.toCanvas === 'function') {
         const qrContainer = document.createElement('div');
         qrContainer.style.position = 'absolute';
-        qrContainer.style.right = '24px';
-        qrContainer.style.bottom = '24px';
-        qrContainer.style.width = '70px';
-        qrContainer.style.height = '70px';
-        qrContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-        qrContainer.style.padding = '4px';
-        qrContainer.style.borderRadius = '8px';
+        qrContainer.style.right = '36px';
+        qrContainer.style.bottom = '36px';
+        qrContainer.style.width = `${EXPORT_QR_SIZE}px`;
+        qrContainer.style.height = `${EXPORT_QR_SIZE}px`;
+        qrContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.82)';
+        qrContainer.style.padding = '6px';
+        qrContainer.style.borderRadius = '12px';
+        qrContainer.style.boxSizing = 'border-box';
 
         const qrCanvas = document.createElement('canvas');
-        qrCanvas.width = 140;
-        qrCanvas.height = 140;
+        qrCanvas.width = EXPORT_QR_SIZE * 2;
+        qrCanvas.height = EXPORT_QR_SIZE * 2;
 
         const computedStyle = window.getComputedStyle(original);
         const qrColor = computedStyle.color || '#333333';
 
-        const card = cards.find(c => c.id === cardId);
         const episodeStr = card?.episode ? card.episode.toLowerCase() : '';
-        const targetUrl = episodeStr 
-          ? `${window.location.origin}/weekly-cards/${episodeStr}` 
+        const targetUrl = episodeStr
+          ? `${window.location.origin}/weekly-cards/${episodeStr}`
           : window.location.href;
 
         await (window as any).QRCode.toCanvas(qrCanvas, targetUrl, {
-          width: 140,
-          height: 140,
+          width: EXPORT_QR_SIZE * 2,
+          height: EXPORT_QR_SIZE * 2,
           margin: 0,
           colorDark: qrColor,
           colorLight: 'transparent',
@@ -342,15 +422,18 @@ const WeeklyCards: React.FC = () => {
         clone.appendChild(qrContainer);
       }
 
+      await fitExportTypography(clone, getInitialExportTypography(card));
+
       const canvas = await html2canvas(clone, {
         backgroundColor: null,
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         logging: false,
-        width: exportWidth,
+        width: EXPORT_WIDTH,
+        height: EXPORT_HEIGHT,
+        windowWidth: EXPORT_WIDTH,
+        windowHeight: EXPORT_HEIGHT,
       });
-
-      document.body.removeChild(wrapper);
 
       const link = document.createElement('a');
       link.download = `weekly-card-${cardId}.png`;
@@ -359,6 +442,10 @@ const WeeklyCards: React.FC = () => {
     } catch (error) {
       if (error instanceof Error) {
         alert(`下载失败: ${error.message}`);
+      }
+    } finally {
+      if (wrapper?.parentNode) {
+        wrapper.parentNode.removeChild(wrapper);
       }
     }
   };
@@ -446,6 +533,21 @@ const WeeklyCards: React.FC = () => {
           />
         </Paper>
 
+        {error && (
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              mb: 4,
+              borderRadius: '12px',
+              color: '#b91c1c',
+              backgroundColor: '#fee2e2',
+            }}
+          >
+            {error}
+          </Paper>
+        )}
+
         {/* 卡片容器 */}
         {loading ? (
           <Loading size={40} />
@@ -514,97 +616,98 @@ const WeeklyCards: React.FC = () => {
                                   p: 4,
                                   color: fontColor,
                                   position: 'relative',
-
                                   backdropFilter: 'blur(10px)',
                                   display: 'flex',
                                   flexDirection: 'column',
                                 }}
                               >
-                                <Typography
-                                  variant="h5"
-                                  component="h3"
-                                  sx={{
-                                    fontWeight: 'bold',
-                                    mb: 2,
-                                    color: fontColor,
-                                  }}
-                                >
-                                  {renderHighlighted(
-                                    card.title,
-                                    debouncedQuery
-                                  )}
-                                </Typography>
-
-                                <Box
-                                  sx={{
-                                    backgroundColor: `${fontColor}10`,
-                                    p: 2,
-                                    borderRadius: '8px',
-                                    mb: 3,
-                                    fontStyle: 'italic',
-                                    position: 'relative',
-                                    pl: 4,
-                                    '&::before': {
-                                      content: '"“"',
-                                      position: 'absolute',
-                                      left: 8,
-                                      top: -10,
-                                      fontSize: '2.2rem',
-                                      lineHeight: 1,
-                                      color: fontColor,
-                                      opacity: 0.2,
-                                    },
-                                  }}
-                                >
+                                <Box className="card-export-content">
                                   <Typography
-                                    className="card-quote"
-                                    variant="body1"
+                                    className="card-title"
+                                    variant="h5"
+                                    component="h3"
                                     sx={{
+                                      fontWeight: 'bold',
+                                      mb: 2,
                                       color: fontColor,
-                                      fontSize: '16px',
-                                      lineHeight: '26px',
                                     }}
                                   >
-                                    {card.quote?.split('\n').map((line, i) => (
-                                      <React.Fragment key={i}>
-                                        {line}
-                                        {i !== card.quote.split('\n').length - 1 && <br />}
-                                      </React.Fragment>
-                                    ))}
+                                    {renderHighlighted(
+                                      card.title,
+                                      debouncedQuery
+                                    )}
                                   </Typography>
-                                </Box>
 
-
-
-                                <Box
-                                  className="card-detail-box"
-                                  sx={{
-                                    fontSize: '16px',
-                                    lineHeight: '26px', // 使用具体像素值解决 html2canvas 换行重叠 bug
-                                    mb: 3,
-                                    flexGrow: 1,
-                                    wordBreak: 'break-word',
-                                    '& p': {
-                                      margin: '0 0 16px 0',
-                                      lineHeight: '26px',
-                                    },
-                                    '& br': {
-                                      display: 'block',
-                                      content: '""',
-                                      marginTop: '8px',
-                                      lineHeight: '26px',
-                                    }
-                                  }}
-                                >
-                                  <div
-                                    dangerouslySetInnerHTML={{
-                                      __html: DOMPurify.sanitize(
-                                        card.detail
-                                          ? marked.parse(card.detail).toString()
-                                          : ''
-                                      ),
+                                  <Box
+                                    className="card-quote-box"
+                                    sx={{
+                                      backgroundColor: `${fontColor}10`,
+                                      p: 2,
+                                      borderRadius: '8px',
+                                      mb: 3,
+                                      fontStyle: 'italic',
+                                      position: 'relative',
+                                      pl: 4,
+                                      '&::before': {
+                                        content: '"“"',
+                                        position: 'absolute',
+                                        left: 8,
+                                        top: -10,
+                                        fontSize: '2.2rem',
+                                        lineHeight: 1,
+                                        color: fontColor,
+                                        opacity: 0.2,
+                                      },
                                     }}
-                                  />
+                                  >
+                                    <Typography
+                                      className="card-quote"
+                                      variant="body1"
+                                      sx={{
+                                        color: fontColor,
+                                        fontSize: '16px',
+                                        lineHeight: '26px',
+                                      }}
+                                    >
+                                      {card.quote?.split('\n').map((line, i) => (
+                                        <React.Fragment key={i}>
+                                          {line}
+                                          {i !== card.quote.split('\n').length - 1 && <br />}
+                                        </React.Fragment>
+                                      ))}
+                                    </Typography>
+                                  </Box>
+
+                                  <Box
+                                    className="card-detail-box"
+                                    sx={{
+                                      fontSize: '16px',
+                                      lineHeight: '26px', // 使用具体像素值解决 html2canvas 换行重叠 bug
+                                      mb: 3,
+                                      flexGrow: 1,
+                                      wordBreak: 'break-word',
+                                      '& p': {
+                                        margin: '0 0 16px 0',
+                                        lineHeight: '26px',
+                                      },
+                                      '& br': {
+                                        display: 'block',
+                                        content: '""',
+                                        marginTop: '8px',
+                                        lineHeight: '26px',
+                                      },
+                                    }}
+                                  >
+                                    <div
+                                      dangerouslySetInnerHTML={{
+                                        __html: DOMPurify.sanitize(
+                                          card.detail
+                                            ? marked.parse(card.detail).toString()
+                                            : ''
+                                        ),
+                                      }}
+                                    />
+                                  </Box>
                                 </Box>
 
                                 <Box
@@ -614,6 +717,7 @@ const WeeklyCards: React.FC = () => {
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
+                                    gap: 2,
                                   }}
                                 >
                                   <Typography
