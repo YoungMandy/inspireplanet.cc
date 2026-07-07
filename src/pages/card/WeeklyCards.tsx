@@ -22,6 +22,7 @@ import {
   getFontColorForGradient,
   getRandomGradientClass,
 } from '@/constants/gradient';
+import { loadQRCodeLibrary } from '@/utils/share';
 
 import { weeklyCardsApi } from '../../netlify/config';
 import { useGlobalSnackbar } from '@/context/app';
@@ -221,6 +222,41 @@ const WeeklyCards: React.FC = () => {
 
       wrapper.appendChild(clone);
       document.body.appendChild(wrapper);
+
+      // 在右下角添加二维码
+      const qrCodeLoaded = await loadQRCodeLibrary();
+      if (qrCodeLoaded && typeof (window as any).QRCode.toCanvas === 'function') {
+        const qrContainer = document.createElement('div');
+        qrContainer.style.position = 'absolute';
+        qrContainer.style.right = '24px';
+        qrContainer.style.bottom = '24px';
+        qrContainer.style.width = '70px';
+        qrContainer.style.height = '70px';
+        qrContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+        qrContainer.style.padding = '4px';
+        qrContainer.style.borderRadius = '8px';
+
+        const qrCanvas = document.createElement('canvas');
+        qrCanvas.width = 140;
+        qrCanvas.height = 140;
+
+        const computedStyle = window.getComputedStyle(original);
+        const qrColor = computedStyle.color || '#333333';
+
+        await (window as any).QRCode.toCanvas(qrCanvas, window.location.href, {
+          width: 140,
+          height: 140,
+          margin: 0,
+          colorDark: qrColor,
+          colorLight: 'transparent',
+          correctLevel: (window as any).QRCode.CorrectLevel?.M || 0,
+        });
+
+        qrCanvas.style.width = '100%';
+        qrCanvas.style.height = '100%';
+        qrContainer.appendChild(qrCanvas);
+        clone.appendChild(qrContainer);
+      }
 
       const canvas = await html2canvas(clone, {
         backgroundColor: null,

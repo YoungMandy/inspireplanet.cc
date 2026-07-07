@@ -73,21 +73,7 @@ async function handleCreate(event: NetlifyEvent): Promise<NetlifyResponse> {
     }
 
     let imagePath: string | null = null;
-
-    try {
-      const searchResult = await searchImageByText(record.detail);
-      if (searchResult && searchResult.images.length > 0) {
-        const randomIndex = Math.floor(
-          Math.random() * searchResult.images.length
-        );
-        imagePath = searchResult.images[randomIndex].url;
-        console.log('搜索到图片:', searchResult.query, '-> 选中:', imagePath);
-      } else {
-        console.warn('未找到匹配图片');
-      }
-    } catch (searchError: any) {
-      console.warn('图片搜索失败，继续创建卡片:', searchError.message);
-    }
+    // 图片搜索功能已关闭，直接存入空值使用纯色/渐变背景
 
     const { data, error } = await supabase
       .from('weekly_cards')

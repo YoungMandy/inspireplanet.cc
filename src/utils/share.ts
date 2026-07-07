@@ -85,7 +85,7 @@ async function loadHtml2Canvas(): Promise<boolean> {
  * @param filenamePrefix 文件名前缀
  * @returns Promise<boolean> 下载是否成功
  */
-async function loadQRCodeLibrary(): Promise<boolean> {
+export async function loadQRCodeLibrary(): Promise<boolean> {
   return new Promise((resolve) => {
     if (typeof (window as any).QRCode !== 'undefined') {
       resolve(true);
