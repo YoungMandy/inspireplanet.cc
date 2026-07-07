@@ -489,24 +489,7 @@ const WeeklyCards: React.FC = () => {
                                   </Typography>
                                 </Box>
 
-                                <Box sx={{ mb: 3 }}>
-                                  <img
-                                    src={
-                                      card.image_path || '/images/mistyblue.png'
-                                    }
-                                    alt={card.title}
-                                    onError={(ev) => {
-                                      ev.currentTarget.src = '/images/mistyblue.png';
-                                    }}
-                                    style={{
-                                      width: '100%',
-                                      height: 'auto',
-                                      borderRadius: '8px',
-                                      maxHeight: '200px',
-                                      objectFit: 'cover',
-                                    }}
-                                  />
-                                </Box>
+
 
                                 <Box
                                   sx={{
