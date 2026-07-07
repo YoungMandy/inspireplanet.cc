@@ -10,6 +10,7 @@
 - UI：MUI（Material UI）
 - 服务端：Netlify Functions（Node.js）
 - 数据库：Supabase
+- 图片资产：GitHub assets 仓库（`sunling/inspireplanet-assets`）
 - 包管理：Yarn Classic（1.x）
 - Node 版本：建议使用 Node 20（本地与部署）
 
@@ -23,7 +24,7 @@
 - `weeklyCards.ts` – 获取全部每周会议卡片
 - `weeklyCardLatest.ts` – 获取最新一期会议卡片
 - `searchImage.ts` – 基于 OpenRouter + Unsplash 搜图
-- `uploadImage.ts` – 将生成图片保存到 GitHub
+- `uploadImage.ts` – 将生成图片保存到 GitHub assets 仓库
 - `uploadCard.ts` – 批量/自动上传每周会议卡片（含自动配图）
 - `meetup.ts` – 活动创建、列表、更新、删除
 - `rsvp.ts` – 活动报名与状态管理
@@ -54,21 +55,37 @@ cp .env.example .env
 
 **服务端变量（无前缀，Netlify Functions 运行时注入）**
 
-| 变量名                      | 说明                                             |
-| --------------------------- | ------------------------------------------------ |
-| `URL`                       | 本地开发填 `http://localhost:8888`               |
-| `SUPABASE_URL`              | Supabase 项目地址                                |
-| `SUPABASE_ANON_KEY`         | Supabase 匿名密钥                                |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Service Role 密钥（绕过 RLS，后端专用） |
-| `JWT_SECRET`                | JWT 加密密钥                                     |
-| `OPENROUTER_API_KEY`        | OpenRouter API 密钥                              |
-| `UNSPLASH_ACCESS_KEY`       | Unsplash Access Key                              |
-| `GITHUB_TOKEN`              | GitHub Personal Access Token（用于保存生成图片） |
-| `GITHUB_REPO_OWNER`         | GitHub 用户名                                    |
-| `GITHUB_REPO_NAME`          | 存放图片的仓库名                                 |
-| `GITHUB_BRANCH`             | 目标分支，通常填 `main`                          |
+| 变量名                      | 说明                                                 |
+| --------------------------- | ---------------------------------------------------- |
+| `URL`                       | 本地开发填 `http://localhost:8888`                   |
+| `SUPABASE_URL`              | Supabase 项目地址                                    |
+| `SUPABASE_ANON_KEY`         | Supabase 匿名密钥                                    |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Service Role 密钥（绕过 RLS，后端专用）     |
+| `JWT_SECRET`                | JWT 加密密钥                                         |
+| `OPENROUTER_API_KEY`        | OpenRouter API 密钥                                  |
+| `UNSPLASH_ACCESS_KEY`       | Unsplash Access Key                                  |
+| `GITHUB_TOKEN`              | GitHub Personal Access Token（用于保存生成图片）     |
+| `GITHUB_REPO_OWNER`         | GitHub 用户名，生产环境填 `sunling`                  |
+| `GITHUB_REPO_NAME`          | 存放图片的仓库名，生产环境填 `inspireplanet-assets`  |
+| `GITHUB_BRANCH`             | 目标分支，通常填 `main`                              |
 
 > Netlify 本地开发（`netlify dev`）会自动读取根目录的 `.env` 文件，无需手动 `source`。
+
+## 图片资产迁移
+
+用户上传图片统一存放在独立仓库：
+
+```text
+sunling/inspireplanet-assets/user_uploads
+```
+
+图片 raw URL 格式：
+
+```text
+https://raw.githubusercontent.com/sunling/inspireplanet-assets/main/user_uploads/<filename>.png
+```
+
+历史数据中如果仍有旧仓库 raw URL，需要在 Supabase 中批量替换为上述新 URL 前缀。
 
 ## 本地开发
 
@@ -118,35 +135,3 @@ cp .env.example .env
 ## 构建与部署
 
 - 部署平台：Netlify（生产环境 URL：`https://inspireplanet.cc/`）
-- 开发：`yarn dev` 启动 Netlify Dev（代理函数与 Vite）
-- 构建：`yarn build` 进行前端打包（如需）
-- 部署：通过 Netlify 自动化部署（推送到主分支或使用 Netlify 控制台）
-
-## 主要功能
-
-- 启发周刊：沉淀每周分享会中的金句、片段与延伸思考
-- 往期内容展示：按剧集分组，支持最新卡片轮播与详情阅读
-- 活动与报名（Meetups）：创建、列表、报名与管理
-- 树洞互助：通过协作文档承载社群成员之间的求助、回应与资源共享
-- 评论系统：卡片详情页读取与提交评论
-- 内容发布工具：为运营者保留卡片生成、搜图与配图能力
-- 安全上传：通过 Netlify Functions 写入 Supabase 或保存到 GitHub
-- 下载功能：导出高质量图片
-
-## 注意事项
-
-- 使用 Node 20 进行本地开发与部署（避免旧版 Node 与依赖不兼容）
-- 若遇到包管理问题，优先使用 Yarn Classic（1.x）
-- 目录中的 `docs/` 为历史版本与示例页面，仅供参考，不影响现代前端应用在 `src/` 下的开发与构建
-
-## 贡献
-
-欢迎贡献！如有建议或问题，请提交 Issue 或 Pull Request。
-
-## 第三方工具
-
-1.[react官网](https://zh-hans.react.dev/)
-
-2.[组件库:material-ui](https://mui.com/material-ui/all-components/)
-
-3.[时间处理:day.js](https://day.nodejs.cn/docs/en/installation/node-js)
