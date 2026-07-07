@@ -38,6 +38,7 @@ const EXPORT_WIDTH = 720;
 const EXPORT_HEIGHT = 1280;
 const EXPORT_PADDING = 56;
 const EXPORT_QR_SIZE = 96;
+const BEIJING_TIME_ZONE = 'Asia/Shanghai';
 
 type ExportTypography = {
   title: number;
@@ -49,6 +50,38 @@ const waitForLayout = () =>
   new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
+
+const toValidDate = (dateValue?: string | null) => {
+  if (!dateValue) return null;
+  const date = new Date(dateValue);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatBeijingDate = (dateValue?: string | null) => {
+  const date = toValidDate(dateValue);
+  if (!date) return '';
+
+  return date.toLocaleDateString('zh-CN', {
+    timeZone: BEIJING_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+};
+
+const getBeijingYear = (dateValue?: string | null) => {
+  const date = toValidDate(dateValue);
+  if (!date) return '';
+
+  const yearPart = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: BEIJING_TIME_ZONE,
+    year: 'numeric',
+  })
+    .formatToParts(date)
+    .find((part) => part.type === 'year');
+
+  return yearPart?.value || date.getFullYear().toString();
+};
 
 const getInitialExportTypography = (card: WeeklyCardItem): ExportTypography => {
   const detailText = (card.detail || '').replace(/<[^>]+>/g, '');
@@ -278,7 +311,7 @@ const WeeklyCards: React.FC = () => {
     };
 
     loadWeeklyCards();
-  }, [location.search, episodeFromPath, showSnackbar]);
+  }, [location.search, episodeFromPath]);
 
   // 输入去抖
   useEffect(() => {
@@ -463,7 +496,7 @@ const WeeklyCards: React.FC = () => {
   // 结构：{ year: { episode: cards[] } }
   const groupedByYear = pagedCards.reduce(
     (acc: Record<string, Record<string, WeeklyCardItem[]>>, card) => {
-      const year = new Date(card.created).getFullYear().toString();
+      const year = getBeijingYear(card.created);
       const ep = card.episode;
       if (!acc[year]) acc[year] = {};
       if (!acc[year][ep]) acc[year][ep] = [];
@@ -730,9 +763,7 @@ const WeeklyCards: React.FC = () => {
                                     variant="caption"
                                     sx={{ color: fontColor, opacity: 0.8 }}
                                   >
-                                    {new Date(card.created).toLocaleDateString(
-                                      'zh-CN'
-                                    )}
+                                    {formatBeijingDate(card.created)}
                                   </Typography>
                                 </Box>
                               </Paper>
