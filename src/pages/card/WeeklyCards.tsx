@@ -203,6 +203,30 @@ const normalizeExportText = (clone: HTMLElement) => {
     spacer.style.height = '10px';
     br.parentNode?.replaceChild(spacer, br);
   });
+
+  // 我们将每一个字强制包裹在独立的 <span> 中，迫使 html2canvas 逐字测量，彻底绕过 Safari 的底层 Bug。
+  const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT, null);
+  const textNodes: Text[] = [];
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.nodeValue && node.nodeValue.trim() !== '') {
+      if (node.parentElement && ['STYLE', 'SCRIPT'].includes(node.parentElement.tagName)) continue;
+      textNodes.push(node as Text);
+    }
+  }
+
+  textNodes.forEach(textNode => {
+    if (!textNode.parentNode) return;
+    const text = textNode.nodeValue || '';
+    const fragment = document.createDocumentFragment();
+    for (let i = 0; i < text.length; i++) {
+      const span = document.createElement('span');
+      span.style.display = 'inline';
+      span.textContent = text[i];
+      fragment.appendChild(span);
+    }
+    textNode.parentNode.replaceChild(fragment, textNode);
+  });
 };
 
 const isExportOverflowing = (clone: HTMLElement) => {
@@ -392,14 +416,14 @@ const WeeklyCards: React.FC = () => {
       wrapper.style.left = '-10000px';
       wrapper.style.top = '0';
       wrapper.style.width = `${EXPORT_WIDTH}px`;
-      wrapper.style.height = `${EXPORT_HEIGHT}px`;
+      wrapper.style.height = `auto`; // 去掉强制高度
       wrapper.style.zIndex = '-1';
       wrapper.style.pointerEvents = 'none';
 
       const clone = original.cloneNode(true) as HTMLElement;
       clone.style.width = `${EXPORT_WIDTH}px`;
-      clone.style.height = `${EXPORT_HEIGHT}px`;
-      clone.style.minHeight = `${EXPORT_HEIGHT}px`;
+      clone.style.height = `auto`; // 随内容自适应，彻底消灭多余空白
+      clone.style.minHeight = `auto`;
       clone.style.boxSizing = 'border-box';
       clone.style.padding = `${EXPORT_PADDING}px`;
       clone.style.transform = 'none';
@@ -407,7 +431,6 @@ const WeeklyCards: React.FC = () => {
       clone.style.overflow = 'hidden';
       clone.style.display = 'flex';
       clone.style.flexDirection = 'column';
-      clone.style.justifyContent = 'space-between';
       clone.style.position = 'relative';
 
       const dlBtn = clone.querySelector('.download-btn') as HTMLElement | null;
@@ -475,9 +498,6 @@ const WeeklyCards: React.FC = () => {
         useCORS: true,
         logging: false,
         width: EXPORT_WIDTH,
-        height: EXPORT_HEIGHT,
-        windowWidth: EXPORT_WIDTH,
-        windowHeight: EXPORT_HEIGHT,
       });
 
       const link = document.createElement('a');
@@ -498,9 +518,9 @@ const WeeklyCards: React.FC = () => {
   // 往期分页：先切出当页的10条，再做年份/期数分组
   const pagedCards = showAll
     ? filteredCards.slice(
-        (allPage - 1) * ALL_PAGE_SIZE,
-        allPage * ALL_PAGE_SIZE
-      )
+      (allPage - 1) * ALL_PAGE_SIZE,
+      allPage * ALL_PAGE_SIZE
+    )
     : filteredCards;
   const allTotalPages = Math.ceil(filteredCards.length / ALL_PAGE_SIZE);
 
@@ -774,7 +794,7 @@ const WeeklyCards: React.FC = () => {
                                       opacity: 0.9,
                                     }}
                                   >
-                                    {card.name ? `${card.name}的启发卡片` : '启发卡片'}
+                                    {card.name ? `星友**${card.name}**的分享` : '星友分享'}
                                   </Typography>
                                   <Typography
                                     className="card-footer-meta"
