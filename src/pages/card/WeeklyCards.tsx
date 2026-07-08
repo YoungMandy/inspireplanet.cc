@@ -794,7 +794,13 @@ const WeeklyCards: React.FC = () => {
                                       opacity: 0.9,
                                     }}
                                   >
-                                    {card.name ? `星友**${card.name}**的分享` : '星友分享'}
+                                    {card.name ? (
+                                      <>
+                                        星友<strong>{card.name}</strong>的分享
+                                      </>
+                                    ) : (
+                                      '星友分享'
+                                    )}
                                   </Typography>
                                   <Typography
                                     className="card-footer-meta"
