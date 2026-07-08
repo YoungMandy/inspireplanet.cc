@@ -26,7 +26,11 @@ import html2canvas from 'html2canvas';
 import { weeklyCardsApi, meetupsApi } from '../../netlify/config';
 import { WeeklyCard } from '../../netlify/services/weeklyCards';
 import { Meetup } from '../../netlify/functions/meetup';
-import { getNextOccurrence, toLocalDateStr, getEpisodeNumber } from '../../utils/recurring';
+import {
+  getNextOccurrence,
+  toLocalDateStr,
+  getEpisodeNumber,
+} from '../../utils/recurring';
 import dayjs from 'dayjs';
 
 interface UpcomingMeetup {
@@ -92,7 +96,12 @@ const Home: React.FC = () => {
           if (m.is_recurring && m.episode_start_date) {
             const date = getNextOccurrence(m.datetime);
             const epNum = getEpisodeNumber(m.episode_start_date, date);
-            return { meetup: m, date, episodeNumber: epNum, dateStr: toLocalDateStr(date) };
+            return {
+              meetup: m,
+              date,
+              episodeNumber: epNum,
+              dateStr: toLocalDateStr(date),
+            };
           }
           const date = dayjs(m.datetime);
           return { meetup: m, date, dateStr: toLocalDateStr(date) };
@@ -222,23 +231,6 @@ const Home: React.FC = () => {
               </Typography>
             </Box>
 
-            <Box sx={{ mb: 3 }}>
-              <img
-                src={card.image_path || '/images/mistyblue.png'}
-                alt={card.title}
-                onError={(e) => {
-                  e.currentTarget.src = '/images/mistyblue.png';
-                }}
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  borderRadius: '8px',
-                  maxHeight: '240px',
-                  objectFit: 'cover',
-                }}
-              />
-            </Box>
-
             <Box sx={{ fontSize: '1rem', lineHeight: 1.6, mb: 3 }}>
               <div
                 dangerouslySetInnerHTML={{
@@ -325,23 +317,41 @@ const Home: React.FC = () => {
         </section>
 
         {/* 关注公众号 */}
-        <section className={styles['stories-section']} style={{ textAlign: 'center' }}>
+        <section
+          className={styles['stories-section']}
+          style={{ textAlign: 'center' }}
+        >
           <h2 className={styles['stories-title']}>加入社群</h2>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-            扫码关注「启发星球笔记」公众号<br />了解社群动态，通过公众号联系我们加入微信群
+            扫码关注「启发星球笔记」公众号
+            <br />
+            了解社群动态，通过公众号联系我们加入微信群
           </Typography>
           <img
             src="/images/qrcode_for_gh_e0969fd9d88b_344.jpg"
             alt="启发星球笔记公众号"
-            style={{ width: 160, height: 160, borderRadius: 10, border: '1px solid #f0f0f0' }}
+            style={{
+              width: 160,
+              height: 160,
+              borderRadius: 10,
+              border: '1px solid #f0f0f0',
+            }}
           />
-          <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography
+            variant="caption"
+            display="block"
+            color="text.secondary"
+            sx={{ mt: 1 }}
+          >
             启发星球笔记
           </Typography>
         </section>
 
         {/* 树洞与互助 */}
-        <section className={styles['stories-section']} style={{ textAlign: 'center' }}>
+        <section
+          className={styles['stories-section']}
+          style={{ textAlign: 'center' }}
+        >
           <h2 className={styles['stories-title']}>树洞与互助</h2>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
             树洞和互助文档已更新，欢迎大家在这里互帮互助。
@@ -352,7 +362,11 @@ const Home: React.FC = () => {
             target="_blank"
             rel="noopener noreferrer"
             size="small"
-            sx={{ borderColor: '#ff6348', color: '#ff6348', '&:hover': { borderColor: '#ff4500', color: '#ff4500' } }}
+            sx={{
+              borderColor: '#ff6348',
+              color: '#ff6348',
+              '&:hover': { borderColor: '#ff4500', color: '#ff4500' },
+            }}
           >
             打开树洞互助文档
           </Button>
@@ -375,7 +389,9 @@ const Home: React.FC = () => {
         {upcomingMeetups.length > 0 && (
           <section className={styles['stories-section']}>
             <h2 className={styles['stories-title']}>近期活动</h2>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
+            <Box
+              sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}
+            >
               {upcomingMeetups.map(({ meetup, date, episodeNumber }) => {
                 const detailUrl = meetup.is_recurring
                   ? `/meetup-detail?id=${meetup.id}&date=${toLocalDateStr(date)}`
@@ -396,27 +412,50 @@ const Home: React.FC = () => {
                       textDecoration: 'none',
                       color: 'inherit',
                       transition: 'box-shadow 0.15s',
-                      '&:hover': { boxShadow: '0 2px 10px rgba(0,0,0,0.08)', backgroundColor: '#fff' },
+                      '&:hover': {
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+                        backgroundColor: '#fff',
+                      },
                     }}
                   >
                     {/* 日期块 */}
                     <Box sx={{ textAlign: 'center', minWidth: 44 }}>
-                      <Typography sx={{ fontSize: '1.3rem', fontWeight: 700, lineHeight: 1, color: '#ff6348' }}>
+                      <Typography
+                        sx={{
+                          fontSize: '1.3rem',
+                          fontWeight: 700,
+                          lineHeight: 1,
+                          color: '#ff6348',
+                        }}
+                      >
                         {date.format('DD')}
                       </Typography>
-                      <Typography sx={{ fontSize: '0.7rem', color: '#999', textTransform: 'uppercase' }}>
+                      <Typography
+                        sx={{
+                          fontSize: '0.7rem',
+                          color: '#999',
+                          textTransform: 'uppercase',
+                        }}
+                      >
                         {date.format('MMM')}
                       </Typography>
                     </Box>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontWeight: 600, fontSize: '0.95rem', mb: 0.25 }} noWrap>
-                        {meetup.title}{episodeNumber ? ` EP${episodeNumber}` : ''}
+                      <Typography
+                        sx={{ fontWeight: 600, fontSize: '0.95rem', mb: 0.25 }}
+                        noWrap
+                      >
+                        {meetup.title}
+                        {episodeNumber ? ` EP${episodeNumber}` : ''}
                       </Typography>
                       <Typography sx={{ fontSize: '0.78rem', color: '#999' }}>
-                        {date.format('HH:mm')} · {MeetupModeLabel[meetup.mode] ?? meetup.mode}
+                        {date.format('HH:mm')} ·{' '}
+                        {MeetupModeLabel[meetup.mode] ?? meetup.mode}
                       </Typography>
                     </Box>
-                    <ChevronRight sx={{ color: '#ccc', fontSize: '1.1rem', flexShrink: 0 }} />
+                    <ChevronRight
+                      sx={{ color: '#ccc', fontSize: '1.1rem', flexShrink: 0 }}
+                    />
                   </Box>
                 );
               })}
@@ -427,7 +466,11 @@ const Home: React.FC = () => {
                 component={Link}
                 to="/activity-calendar"
                 size="small"
-                sx={{ borderColor: '#ff6348', color: '#ff6348', '&:hover': { borderColor: '#ff4500', color: '#ff4500' } }}
+                sx={{
+                  borderColor: '#ff6348',
+                  color: '#ff6348',
+                  '&:hover': { borderColor: '#ff4500', color: '#ff4500' },
+                }}
               >
                 查看活动日历 →
               </Button>

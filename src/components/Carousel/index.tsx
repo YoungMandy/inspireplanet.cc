@@ -185,51 +185,16 @@ const Carousel: React.FC<CarouselProps> = ({
               className={`${
                 styles[`${direction}-carousel-content`]
               } ${bgClass}`}
+              ref={(el: HTMLDivElement | null) => {
+                if (el) firstRefs.current[index] = el;
+              }}
+              id={`carousel-first-${e.id}`}
               style={{
                 transform: `translateX(-${currentSlide * 100}%)`,
               }}
             >
-              <div
-                className={styles[`${direction}-first`]}
-                ref={(el) => {
-                  if (el) firstRefs.current[index] = el;
-                }}
-                id={`carousel-first-${e.id}`}
-              >
-                <img
-                  src={e.image_path || '/images/mistyblue.png'}
-                  className={styles[`${direction}-carousel-img`]}
-                  alt={e.title || `Slide ${index + 1}`}
-                  loading="lazy"
-                  onError={(ev) => {
-                    ev.currentTarget.src = '/images/mistyblue.png';
-                  }}
-                />
-                {direction === 'horizontal' && (
-                  <div className={styles[`cover-overlay`]}>
-                    <div className={styles[`cover-title`]}>{e.title}</div>
-                    <IconButton
-                      aria-label="下载"
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        downloadSlide(index);
-                      }}
-                      sx={{
-                        position: 'absolute',
-                        right: 12,
-                        bottom: 12,
-                        backgroundColor: '#b2bceaff',
-                        color: '#fff',
-                        opacity: 0.85,
-                        '&:hover': { opacity: 1 },
-                      }}
-                      size="small"
-                    >
-                      <DownloadIcon fontSize="small" />
-                    </IconButton>
-                  </div>
-                )}
-                {direction === 'vertical' && (
+              {direction === 'vertical' && (
+                <div className={styles[`${direction}-first`]}>
                   <>
                     <div
                       className={styles['vertical-episode']}
@@ -294,8 +259,8 @@ const Carousel: React.FC<CarouselProps> = ({
                       </IconButton>
                     </div>
                   </>
-                )}
-              </div>
+                </div>
+              )}
               <div className={styles[`${direction}-second`]}>
                 <div
                   className={styles[`${direction}-item-episode`]}
@@ -315,6 +280,26 @@ const Carousel: React.FC<CarouselProps> = ({
                     ),
                   }}
                 />
+                {direction === 'horizontal' && (
+                  <div className={styles['horizontal-actions']}>
+                    <IconButton
+                      aria-label="下载"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        downloadSlide(index);
+                      }}
+                      sx={{
+                        backgroundColor: '#b2bceaff',
+                        color: '#fff',
+                        opacity: 0.9,
+                        '&:hover': { opacity: 1 },
+                      }}
+                      size="small"
+                    >
+                      <DownloadIcon fontSize="small" />
+                    </IconButton>
+                  </div>
+                )}
               </div>
             </Box>
           );

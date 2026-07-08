@@ -18,10 +18,7 @@ import {
 import DownloadIcon from '@mui/icons-material/Download';
 import useResponsive from '@/hooks/useResponsive';
 
-import {
-  getFontColorForGradient,
-  getRandomGradientClass,
-} from '@/constants/gradient';
+import { getFontColorForGradient, gradientClasses } from '@/constants/gradient';
 import { loadQRCodeLibrary } from '@/utils/share';
 
 import { weeklyCardsApi } from '../../netlify/config';
@@ -52,6 +49,101 @@ const waitForLayout = () =>
   new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
+
+const parseCssColor = (color: string) => {
+  const normalized = color.trim();
+  const rgbMatch = normalized.match(/^rgba?\(([^)]+)\)$/i);
+
+  if (rgbMatch) {
+    const [r, g, b] = rgbMatch[1]
+      .replace(/\//g, ' ')
+      .split(/[,\s]+/)
+      .filter(Boolean)
+      .slice(0, 3)
+      .map(Number);
+
+    if ([r, g, b].every((value) => Number.isFinite(value))) {
+      return { r, g, b };
+    }
+  }
+
+  const hexMatch = normalized.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!hexMatch) return null;
+
+  const hex = hexMatch[1];
+  const expanded =
+    hex.length === 3
+      ? hex
+          .split('')
+          .map((char) => `${char}${char}`)
+          .join('')
+      : hex;
+
+  return {
+    r: Number.parseInt(expanded.slice(0, 2), 16),
+    g: Number.parseInt(expanded.slice(2, 4), 16),
+    b: Number.parseInt(expanded.slice(4, 6), 16),
+  };
+};
+
+const getRelativeLuminance = ({
+  r,
+  g,
+  b,
+}: {
+  r: number;
+  g: number;
+  b: number;
+}) => {
+  const [sr, sg, sb] = [r, g, b].map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928
+      ? channel / 12.92
+      : Math.pow((channel + 0.055) / 1.055, 2.4);
+  });
+
+  return 0.2126 * sr + 0.7152 * sg + 0.0722 * sb;
+};
+
+const toRgba = (color: string, alpha: number) => {
+  const rgb = parseCssColor(color);
+  if (!rgb) return `rgba(44, 62, 80, ${alpha})`;
+
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+};
+
+const getQrPanelStyles = (qrColor: string) => {
+  const rgb = parseCssColor(qrColor);
+  const isLightQr = rgb ? getRelativeLuminance(rgb) > 0.72 : false;
+
+  return {
+    backgroundColor: isLightQr
+      ? 'rgba(15, 23, 42, 0.74)'
+      : 'rgba(255, 255, 255, 0.86)',
+    borderColor: toRgba(qrColor, isLightQr ? 0.36 : 0.24),
+  };
+};
+
+const getWeeklyCardGradient = (card: WeeklyCard, index: number) => {
+  const explicitGradient = (card as WeeklyCard & { gradient_class?: string })
+    .gradient_class;
+  if (explicitGradient && gradientClasses.includes(explicitGradient)) {
+    return explicitGradient;
+  }
+
+  const seed =
+    `${card.id || ''}${card.episode || ''}${card.title || ''}` || `${index}`;
+  let hash = 0;
+
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  }
+
+  return (
+    gradientClasses[Math.abs(hash) % gradientClasses.length] ||
+    'card-gradient-1'
+  );
+};
 
 const toValidDate = (dateValue?: string | null) => {
   if (!dateValue) return null;
@@ -116,10 +208,18 @@ const applyExportTypography = (
   const titleEl = clone.querySelector('.card-title') as HTMLElement | null;
   const quoteBox = clone.querySelector('.card-quote-box') as HTMLElement | null;
   const quoteEl = clone.querySelector('.card-quote') as HTMLElement | null;
-  const detailBox = clone.querySelector('.card-detail-box') as HTMLElement | null;
-  const footerBox = clone.querySelector('.card-footer-box') as HTMLElement | null;
-  const footerPrimary = clone.querySelector('.card-footer-primary') as HTMLElement | null;
-  const footerMeta = clone.querySelector('.card-footer-meta') as HTMLElement | null;
+  const detailBox = clone.querySelector(
+    '.card-detail-box'
+  ) as HTMLElement | null;
+  const footerBox = clone.querySelector(
+    '.card-footer-box'
+  ) as HTMLElement | null;
+  const footerPrimary = clone.querySelector(
+    '.card-footer-primary'
+  ) as HTMLElement | null;
+  const footerMeta = clone.querySelector(
+    '.card-footer-meta'
+  ) as HTMLElement | null;
 
   if (titleEl) {
     titleEl.style.fontSize = `${typography.title}px`;
@@ -179,8 +279,12 @@ const applyExportTypography = (
 };
 
 const normalizeExportText = (clone: HTMLElement) => {
-  const contentBox = clone.querySelector('.card-export-content') as HTMLElement | null;
-  const detailBox = clone.querySelector('.card-detail-box') as HTMLElement | null;
+  const contentBox = clone.querySelector(
+    '.card-export-content'
+  ) as HTMLElement | null;
+  const detailBox = clone.querySelector(
+    '.card-detail-box'
+  ) as HTMLElement | null;
 
   if (contentBox) {
     contentBox.style.display = 'flex';
@@ -213,7 +317,11 @@ const normalizeExportText = (clone: HTMLElement) => {
   let node;
   while ((node = walker.nextNode())) {
     if (node.nodeValue && node.nodeValue.trim() !== '') {
-      if (node.parentElement && ['STYLE', 'SCRIPT'].includes(node.parentElement.tagName)) continue;
+      if (
+        node.parentElement &&
+        ['STYLE', 'SCRIPT'].includes(node.parentElement.tagName)
+      )
+        continue;
       textNodes.push(node as Text);
     }
   }
@@ -313,10 +421,12 @@ const WeeklyCards: React.FC = () => {
     try {
       const res = await weeklyCardsApi.getAllLimited(500);
       if (res.success) {
-        const allCards = (res?.data?.records || []).map((card: WeeklyCard) => ({
-          ...card,
-          gradient: 'card-gradient-1',
-        }));
+        const allCards = (res?.data?.records || []).map(
+          (card: WeeklyCard, index: number) => ({
+            ...card,
+            gradient: getWeeklyCardGradient(card, index),
+          })
+        );
         setCards(allCards);
         setFilteredCards(allCards);
         setShowAll(true);
@@ -355,10 +465,12 @@ const WeeklyCards: React.FC = () => {
         const allCards = res?.data?.records || [];
 
         // 规范化卡片数据格式
-        const normalizedCards = allCards.map((card: WeeklyCard) => ({
-          ...card,
-          gradient: 'card-gradient-1', // 默认渐变样式
-        }));
+        const normalizedCards = allCards.map(
+          (card: WeeklyCard, index: number) => ({
+            ...card,
+            gradient: getWeeklyCardGradient(card, index),
+          })
+        );
 
         setCards(normalizedCards);
         setFilteredCards(normalizedCards);
@@ -474,14 +586,16 @@ const WeeklyCards: React.FC = () => {
 
       // 在右下角添加二维码
       const qrCodeLoaded = await loadQRCodeLibrary();
-      if (qrCodeLoaded && typeof (window as any).QRCode.toCanvas === 'function') {
+      if (
+        qrCodeLoaded &&
+        typeof (window as any).QRCode.toCanvas === 'function'
+      ) {
         const qrContainer = document.createElement('div');
         qrContainer.style.position = 'absolute';
         qrContainer.style.right = '36px';
         qrContainer.style.bottom = '36px';
         qrContainer.style.width = `${EXPORT_QR_SIZE}px`;
         qrContainer.style.height = `${EXPORT_QR_SIZE}px`;
-        qrContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.82)';
         qrContainer.style.padding = '6px';
         qrContainer.style.borderRadius = '12px';
         qrContainer.style.boxSizing = 'border-box';
@@ -492,6 +606,10 @@ const WeeklyCards: React.FC = () => {
 
         const computedStyle = window.getComputedStyle(original);
         const qrColor = computedStyle.color || '#333333';
+        const qrPanelStyles = getQrPanelStyles(qrColor);
+        qrContainer.style.backgroundColor = qrPanelStyles.backgroundColor;
+        qrContainer.style.border = `1px solid ${qrPanelStyles.borderColor}`;
+        qrContainer.style.boxShadow = '0 10px 28px rgba(15, 23, 42, 0.12)';
 
         const episodeStr = card?.episode ? card.episode.toLowerCase() : '';
         const targetUrl = episodeStr
@@ -513,7 +631,10 @@ const WeeklyCards: React.FC = () => {
         clone.appendChild(qrContainer);
       }
 
-      const measuredHeight = await fitExportTypography(clone, getInitialExportTypography(card));
+      const measuredHeight = await fitExportTypography(
+        clone,
+        getInitialExportTypography(card)
+      );
       const finalExportHeight = getFinalExportHeight(measuredHeight);
 
       clone.style.height = `${finalExportHeight}px`;
@@ -550,9 +671,9 @@ const WeeklyCards: React.FC = () => {
   // 往期分页：先切出当页的10条，再做年份/期数分组
   const pagedCards = showAll
     ? filteredCards.slice(
-      (allPage - 1) * ALL_PAGE_SIZE,
-      allPage * ALL_PAGE_SIZE
-    )
+        (allPage - 1) * ALL_PAGE_SIZE,
+        allPage * ALL_PAGE_SIZE
+      )
     : filteredCards;
   const allTotalPages = Math.ceil(filteredCards.length / ALL_PAGE_SIZE);
 
@@ -688,10 +809,10 @@ const WeeklyCards: React.FC = () => {
                       id={`episode-container-${year}-${episode.toLowerCase()}`}
                     >
                       {groupedByYear[year][episode].map((card) => {
-                        const fontColor = getFontColorForGradient(
-                          card.gradient
-                        );
-                        const randomGradientClass = getRandomGradientClass();
+                        const cardGradientClass =
+                          card.gradient || 'card-gradient-1';
+                        const fontColor =
+                          getFontColorForGradient(cardGradientClass);
                         return (
                           <Grid key={card.id} size={{ xs: 12, md: 6 }}>
                             <Box
@@ -705,7 +826,7 @@ const WeeklyCards: React.FC = () => {
                               <Paper
                                 elevation={1}
                                 id={`card-${card.id}`}
-                                className={randomGradientClass}
+                                className={cardGradientClass}
                                 sx={{
                                   height: '100%',
                                   borderRadius: '12px',
@@ -766,12 +887,16 @@ const WeeklyCards: React.FC = () => {
                                         lineHeight: '26px',
                                       }}
                                     >
-                                      {card.quote?.split('\n').map((line, i) => (
-                                        <React.Fragment key={i}>
-                                          {line}
-                                          {i !== card.quote.split('\n').length - 1 && <br />}
-                                        </React.Fragment>
-                                      ))}
+                                      {card.quote
+                                        ?.split('\n')
+                                        .map((line, i) => (
+                                          <React.Fragment key={i}>
+                                            {line}
+                                            {i !==
+                                              card.quote.split('\n').length -
+                                                1 && <br />}
+                                          </React.Fragment>
+                                        ))}
                                     </Typography>
                                   </Box>
 
@@ -799,7 +924,9 @@ const WeeklyCards: React.FC = () => {
                                       dangerouslySetInnerHTML={{
                                         __html: DOMPurify.sanitize(
                                           card.detail
-                                            ? marked.parse(card.detail).toString()
+                                            ? marked
+                                                .parse(card.detail)
+                                                .toString()
                                             : ''
                                         ),
                                       }}
@@ -828,7 +955,7 @@ const WeeklyCards: React.FC = () => {
                                   >
                                     {card.name ? (
                                       <>
-                                        星友<strong>{card.name}</strong>的分享
+                                        星友「{card.name}」的分享
                                       </>
                                     ) : (
                                       '星友分享'
@@ -839,7 +966,8 @@ const WeeklyCards: React.FC = () => {
                                     variant="caption"
                                     sx={{ color: fontColor, opacity: 0.72 }}
                                   >
-                                    启发星球 {card.episode} · {formatBeijingDate(card.created)}
+                                    启发星球 {card.episode} ·{' '}
+                                    {formatBeijingDate(card.created)}
                                   </Typography>
                                 </Box>
                               </Paper>
