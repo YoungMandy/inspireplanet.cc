@@ -36,6 +36,8 @@ export interface WeeklyCardItem extends WeeklyCard {
 
 const EXPORT_WIDTH = 720;
 const EXPORT_HEIGHT = 1280;
+const MAX_EXPORT_HEIGHT = 1680;
+const EXPORT_TARGET_FILL_HEIGHT = 1120;
 const EXPORT_PADDING = 56;
 const EXPORT_QR_SIZE = 96;
 const BEIJING_TIME_ZONE = 'Asia/Shanghai';
@@ -204,7 +206,8 @@ const normalizeExportText = (clone: HTMLElement) => {
     br.parentNode?.replaceChild(spacer, br);
   });
 
-  // 我们将每一个字强制包裹在独立的 <span> 中，迫使 html2canvas 逐字测量，彻底绕过 Safari 的底层 Bug。
+  // Safari + html2canvas 在中文连续文本上偶尔会把行高算错。
+  // 导出前只在隐藏 clone 中逐字包 span，可以避免影响页面上的真实 DOM。
   const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT, null);
   const textNodes: Text[] = [];
   let node;
@@ -215,7 +218,7 @@ const normalizeExportText = (clone: HTMLElement) => {
     }
   }
 
-  textNodes.forEach(textNode => {
+  textNodes.forEach((textNode) => {
     if (!textNode.parentNode) return;
     const text = textNode.nodeValue || '';
     const fragment = document.createDocumentFragment();
@@ -229,13 +232,9 @@ const normalizeExportText = (clone: HTMLElement) => {
   });
 };
 
-const isExportOverflowing = (clone: HTMLElement) => {
-  const contentBox = clone.querySelector('.card-export-content') as HTMLElement | null;
-  const contentOverflow = contentBox
-    ? contentBox.scrollHeight > contentBox.clientHeight + 2
-    : false;
-
-  return contentOverflow || clone.scrollHeight > clone.clientHeight + 2;
+const measureExportHeight = async (clone: HTMLElement) => {
+  await waitForLayout();
+  return Math.ceil(clone.scrollHeight);
 };
 
 const fitExportTypography = async (
@@ -244,12 +243,28 @@ const fitExportTypography = async (
 ) => {
   let typography = { ...initialTypography };
   const minTypography: ExportTypography = { title: 22, quote: 18, detail: 14 };
+  const maxTypography: ExportTypography = { title: 58, quote: 52, detail: 34 };
 
   applyExportTypography(clone, typography);
-  await waitForLayout();
+  let measuredHeight = await measureExportHeight(clone);
 
   while (
-    isExportOverflowing(clone) &&
+    measuredHeight < EXPORT_TARGET_FILL_HEIGHT &&
+    (typography.title < maxTypography.title ||
+      typography.quote < maxTypography.quote ||
+      typography.detail < maxTypography.detail)
+  ) {
+    typography = {
+      title: Math.min(maxTypography.title, typography.title + 1),
+      quote: Math.min(maxTypography.quote, typography.quote + 1),
+      detail: Math.min(maxTypography.detail, typography.detail + 1),
+    };
+    applyExportTypography(clone, typography);
+    measuredHeight = await measureExportHeight(clone);
+  }
+
+  while (
+    measuredHeight > MAX_EXPORT_HEIGHT &&
     (typography.title > minTypography.title ||
       typography.quote > minTypography.quote ||
       typography.detail > minTypography.detail)
@@ -260,8 +275,16 @@ const fitExportTypography = async (
       detail: Math.max(minTypography.detail, typography.detail - 1),
     };
     applyExportTypography(clone, typography);
-    await waitForLayout();
+    measuredHeight = await measureExportHeight(clone);
   }
+
+  return measuredHeight;
+};
+
+const getFinalExportHeight = (measuredHeight: number) => {
+  if (measuredHeight <= EXPORT_HEIGHT) return EXPORT_HEIGHT;
+  if (measuredHeight <= MAX_EXPORT_HEIGHT) return measuredHeight;
+  return measuredHeight;
 };
 
 const WeeklyCards: React.FC = () => {
@@ -416,14 +439,14 @@ const WeeklyCards: React.FC = () => {
       wrapper.style.left = '-10000px';
       wrapper.style.top = '0';
       wrapper.style.width = `${EXPORT_WIDTH}px`;
-      wrapper.style.height = `auto`; // 去掉强制高度
+      wrapper.style.height = 'auto';
       wrapper.style.zIndex = '-1';
       wrapper.style.pointerEvents = 'none';
 
       const clone = original.cloneNode(true) as HTMLElement;
       clone.style.width = `${EXPORT_WIDTH}px`;
-      clone.style.height = `auto`; // 随内容自适应，彻底消灭多余空白
-      clone.style.minHeight = `auto`;
+      clone.style.height = 'auto';
+      clone.style.minHeight = '0';
       clone.style.boxSizing = 'border-box';
       clone.style.padding = `${EXPORT_PADDING}px`;
       clone.style.transform = 'none';
@@ -490,7 +513,13 @@ const WeeklyCards: React.FC = () => {
         clone.appendChild(qrContainer);
       }
 
-      await fitExportTypography(clone, getInitialExportTypography(card));
+      const measuredHeight = await fitExportTypography(clone, getInitialExportTypography(card));
+      const finalExportHeight = getFinalExportHeight(measuredHeight);
+
+      clone.style.height = `${finalExportHeight}px`;
+      clone.style.minHeight = `${finalExportHeight}px`;
+      wrapper.style.height = `${finalExportHeight}px`;
+      await waitForLayout();
 
       const canvas = await html2canvas(clone, {
         backgroundColor: null,
@@ -498,6 +527,9 @@ const WeeklyCards: React.FC = () => {
         useCORS: true,
         logging: false,
         width: EXPORT_WIDTH,
+        height: finalExportHeight,
+        windowWidth: EXPORT_WIDTH,
+        windowHeight: finalExportHeight,
       });
 
       const link = document.createElement('a');
