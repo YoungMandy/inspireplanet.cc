@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import EditIcon from '@mui/icons-material/Edit';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
@@ -20,15 +21,19 @@ import TextCollapse from '../TextCollapse';
 interface InspireCardProps {
   card: CardItem;
   canComment?: boolean;
+  canEdit?: boolean;
   onCardClick: (id: string) => void;
   onSubmitComment?: (id: string, name: string, comment: string) => void;
+  onEdit?: (id: string) => void;
 }
 
 const InspireCard: React.FC<InspireCardProps> = ({
   card,
   onCardClick,
   canComment = true,
+  canEdit = false,
   onSubmitComment,
+  onEdit,
 }) => {
   marked.setOptions({ breaks: true });
   const [showCommentForm, setShowCommentForm] = useState<boolean>(!!canComment);
@@ -225,6 +230,17 @@ const InspireCard: React.FC<InspireCardProps> = ({
         >
           <ChatBubbleOutlineIcon fontSize="small" />
         </IconButton>
+        {canEdit && onEdit && (
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(card.id);
+            }}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+        )}
       </Box>
 
       {/* 卡片操作区域：仅在允许评论时显示浮层 */}

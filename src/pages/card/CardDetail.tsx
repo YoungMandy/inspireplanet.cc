@@ -492,7 +492,9 @@ const CardDetail: React.FC = () => {
                             borderRadius: '8px',
                             maxHeight: '400px',
                             objectFit: 'cover',
-                            transition: isMobile ? 'none' : 'transform 0.5s ease',
+                            transition: isMobile
+                              ? 'none'
+                              : 'transform 0.5s ease',
                           }}
                           onMouseOver={(e) =>
                             !isMobile &&
@@ -594,6 +596,23 @@ const CardDetail: React.FC = () => {
 
               {canDelete && (
                 <Button
+                  id="edit-btn"
+                  variant="contained"
+                  onClick={() => navigate(`/card-edit/${card?.id}`)}
+                  sx={{
+                    backgroundColor: '#38a169',
+                    '&:hover': { backgroundColor: '#319754' },
+                    py: 1.5,
+                    px: { xs: 3, sm: 4 },
+                    minWidth: { xs: 'auto', sm: '140px' },
+                  }}
+                >
+                  编辑卡片
+                </Button>
+              )}
+
+              {canDelete && (
+                <Button
                   id="delete-btn"
                   variant="contained"
                   disabled={deleting}
@@ -619,9 +638,7 @@ const CardDetail: React.FC = () => {
             >
               <DialogTitle id="delete-dialog-title">确认删除</DialogTitle>
               <DialogContent>
-                <Typography>
-                  确定要删除这张卡片吗？此操作无法撤销。
-                </Typography>
+                <Typography>确定要删除这张卡片吗？此操作无法撤销。</Typography>
               </DialogContent>
               <DialogActions>
                 <Button onClick={handleDeleteCancel} disabled={deleting}>

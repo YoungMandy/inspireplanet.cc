@@ -245,8 +245,12 @@ const MyCards: React.FC = () => {
                             <InspireCard
                               card={card as any}
                               canComment={false}
+                              canEdit={true}
                               onCardClick={(id: string) =>
                                 navigate(`/card-detail?id=${id}`)
+                              }
+                              onEdit={(id: string) =>
+                                navigate(`/card-edit/${id}`)
                               }
                               onSubmitComment={async (
                                 id: string,
