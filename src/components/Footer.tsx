@@ -5,6 +5,7 @@ import { useResponsive } from '../hooks/useResponsive';
 
 const Footer: React.FC = () => {
   const { isMobile, theme } = useResponsive();
+  const currentYear = new Date().getFullYear();
 
   const footerLinks = [
     { path: '/cover-editor', label: '横版封面制作' },
@@ -46,7 +47,7 @@ const Footer: React.FC = () => {
               color="text.secondary"
               sx={{ fontWeight: 500 }}
             >
-              © 2025 启发星球
+              © {currentYear} 启发星球
             </Typography>
             <Typography
               variant="body2"

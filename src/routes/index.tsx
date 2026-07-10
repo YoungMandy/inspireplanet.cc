@@ -100,6 +100,12 @@ const createOrganizerProtectedRoute = (Component: React.ReactNode) => (
 const Home = lazy(() => import('../pages/home/Home'));
 const About = lazy(() => import('../pages/introduce/About'));
 const Contact = lazy(() => import('../pages/introduce/Contact'));
+const ClarifyTogether = lazy(
+  () => import('../pages/dialogue/ClarifyTogether')
+);
+const ParticipantSignup = lazy(
+  () => import('../pages/dialogue/ParticipantSignup')
+);
 const Login = lazy(() => import('../pages/auth/Login'));
 const Cards = lazy(() => import('../pages/card/Cards'));
 const CreateCard = lazy(() => import('../pages/card/CardCreate'));
@@ -152,6 +158,14 @@ const router = createBrowserRouter(
         { path: 'about', element: createLazyRoute(<About />) },
         { path: 'home', element: createLazyRoute(<Home />) },
         { path: 'contact', element: createLazyRoute(<Contact />) },
+        {
+          path: 'clarify-together',
+          element: createLazyRoute(<ClarifyTogether />),
+        },
+        {
+          path: 'clarify-together/participant',
+          element: createLazyRoute(<ParticipantSignup />),
+        },
         { path: 'login', element: createLazyRoute(<Login />) },
         {
           path: 'forgot-password',

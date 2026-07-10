@@ -23,6 +23,7 @@ import {
   CardMembership,
   CalendarToday,
   Info,
+  Forum,
   AccountCircle,
   Logout,
   Lock,
@@ -125,6 +126,11 @@ const Header: React.FC<HeaderProps> = ({
       path: '/weekly-cards',
       label: '启发周刊',
       icon: <CardMembership fontSize="small" />,
+    },
+    {
+      path: '/clarify-together',
+      label: '对话实验',
+      icon: <Forum fontSize="small" />,
     },
     {
       href: mutualAidDocUrl,
