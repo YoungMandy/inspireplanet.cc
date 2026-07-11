@@ -106,6 +106,9 @@ const ClarifyTogether = lazy(
 const ParticipantSignup = lazy(
   () => import('../pages/dialogue/ParticipantSignup')
 );
+const DialoguePoster = lazy(
+  () => import('../pages/dialogue/DialoguePoster')
+);
 const Login = lazy(() => import('../pages/auth/Login'));
 const Cards = lazy(() => import('../pages/card/Cards'));
 const CreateCard = lazy(() => import('../pages/card/CardCreate'));
@@ -165,6 +168,14 @@ const router = createBrowserRouter(
         {
           path: 'clarify-together/participant',
           element: createLazyRoute(<ParticipantSignup />),
+        },
+        {
+          path: 'clarify-together/poster',
+          element: createLazyRoute(<DialoguePoster />),
+        },
+        {
+          path: 'page-poster',
+          element: createLazyRoute(<DialoguePoster />),
         },
         { path: 'login', element: createLazyRoute(<Login />) },
         {
