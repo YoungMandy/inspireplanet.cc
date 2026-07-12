@@ -13,6 +13,7 @@ type FormState = {
   boundaries: string;
   publicity: string[];
   availableDates: string[];
+  otherAvailability: string;
 };
 
 const hopeOptions = [
@@ -43,6 +44,7 @@ const initialState: FormState = {
   boundaries: '',
   publicity: [],
   availableDates: [],
+  otherAvailability: '',
 };
 
 const getUpcomingSaturdayOptions = () => {
@@ -118,11 +120,16 @@ const ParticipantSignup: React.FC = () => {
       `4. 希望从对话中得到：\n${[...form.hopes, form.hopeOther].filter(Boolean).join('；')}`,
       `5. 不希望被询问或公开的内容：\n${form.boundaries || '未填写'}`,
       `6. 可以接受的公开程度：\n${form.publicity.join('；')}`,
-      `7. 可以参加的场次：\n${form.availableDates
-        .map(
+      `7. 可以参加的场次：\n${[
+        ...form.availableDates.map(
           (date) =>
             saturdayOptions.find((option) => option.value === date)?.label || date
-        )
+        ),
+        form.otherAvailability
+          ? `其他方便时间：${form.otherAvailability}`
+          : '',
+      ]
+        .filter(Boolean)
         .join('；')}`,
     ].join('\n\n');
 
@@ -138,8 +145,8 @@ const ParticipantSignup: React.FC = () => {
       setError('请至少选择一项你可以接受的公开程度。');
       return;
     }
-    if (!form.availableDates.length) {
-      setError('请至少选择一个你可以参加的周六场次。');
+    if (!form.availableDates.length && !form.otherAvailability.trim()) {
+      setError('请选择一个周六场次，或填写其他方便时间。');
       return;
     }
 
@@ -235,6 +242,13 @@ const ParticipantSignup: React.FC = () => {
                 const option = saturdayOptions.find((item) => item.label === label);
                 if (option) toggleDate(option.value);
               }}
+            />
+            <TextField
+              fullWidth
+              label="其他方便时间（选填）"
+              placeholder="例如：北京时间周日早上，或工作日晚上"
+              value={form.otherAvailability}
+              onChange={(event) => update('otherAvailability', event.target.value)}
             />
           </Question>
         </FormSection>
