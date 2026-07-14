@@ -7,6 +7,12 @@ import styles from './dialoguePoster.module.css';
 const siteOrigin = 'https://inspireplanet.cc';
 
 const presets = {
+  community: {
+    title: '加入启发星球微信群',
+    description: '和我们一起分享最近的启发、问题和行动。',
+    label: '加入微信群',
+    url: `${siteOrigin}/join`,
+  },
   dialogue: {
     title: '一起把问题说清楚',
     description: '带着一个最近真实面对、还没有想清楚的问题来。',
@@ -32,10 +38,11 @@ const normalizeUrl = (value: string) => {
 const DialoguePoster: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initial = {
-    title: searchParams.get('title') || presets.dialogue.title,
-    description: searchParams.get('description') || presets.dialogue.description,
-    label: searchParams.get('label') || presets.dialogue.label,
-    url: searchParams.get('url') || presets.dialogue.url,
+    title: searchParams.get('title') || presets.community.title,
+    description:
+      searchParams.get('description') || presets.community.description,
+    label: searchParams.get('label') || presets.community.label,
+    url: searchParams.get('url') || presets.community.url,
   };
   const posterRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(initial.title);
@@ -82,8 +89,15 @@ const DialoguePoster: React.FC = () => {
 
       <div className={styles.presetBar}>
         <span>快捷预设</span>
-        <button type="button" onClick={() => applyPreset(presets.dialogue)}>对话实验报名</button>
-        <button type="button" onClick={() => applyPreset(presets.cards)}>创建卡片</button>
+        <button type="button" onClick={() => applyPreset(presets.community)}>
+          加入微信群
+        </button>
+        <button type="button" onClick={() => applyPreset(presets.dialogue)}>
+          对话实验报名
+        </button>
+        <button type="button" onClick={() => applyPreset(presets.cards)}>
+          创建卡片
+        </button>
       </div>
 
       <div className={styles.workspace}>
@@ -97,21 +111,63 @@ const DialoguePoster: React.FC = () => {
 
           <div className={styles.posterBottom}>
             <div className={styles.qrBox}>
-              <QRCodeSVG value={qrUrl} size={172} level="H" bgColor="#fffdf9" fgColor="#273a36" marginSize={2} />
+              <QRCodeSVG
+                value={qrUrl}
+                size={172}
+                level="H"
+                bgColor="#fffdf9"
+                fgColor="#273a36"
+                marginSize={2}
+              />
               <span>扫码进入：{label || '启发星球页面'}</span>
             </div>
           </div>
         </div>
 
         <aside className={styles.editor}>
-          <label>海报标题<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-          <label>这个页面是做什么的<textarea rows={4} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
-          <label>页面类型<input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="例如：活动详情" /></label>
-          <label>页面地址<input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="可填写 /create-card 或完整网址" /></label>
+          <label>
+            海报标题
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </label>
+          <label>
+            这个页面是做什么的
+            <textarea
+              rows={4}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </label>
+          <label>
+            页面类型
+            <input
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+              placeholder="例如：活动详情"
+            />
+          </label>
+          <label>
+            页面地址
+            <input
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="可填写 /create-card 或完整网址"
+            />
+          </label>
 
           <div className={styles.actions}>
-            <button type="button" onClick={downloadPoster} disabled={downloading}>{downloading ? '正在生成…' : '下载海报 PNG'}</button>
-            <a href={qrUrl} target="_blank" rel="noreferrer">打开目标页面</a>
+            <button
+              type="button"
+              onClick={downloadPoster}
+              disabled={downloading}
+            >
+              {downloading ? '正在生成…' : '下载海报 PNG'}
+            </button>
+            <a href={qrUrl} target="_blank" rel="noreferrer">
+              打开目标页面
+            </a>
             <Link to="/create-card">创建启发卡片</Link>
           </div>
           <small>二维码统一使用正式域名，即使在本地制作也可以直接分享。</small>

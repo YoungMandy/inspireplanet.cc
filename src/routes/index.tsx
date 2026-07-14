@@ -109,6 +109,10 @@ const ParticipantSignup = lazy(
 const DialoguePoster = lazy(
   () => import('../pages/dialogue/DialoguePoster')
 );
+const CommunityJoin = lazy(() => import('../pages/community/CommunityJoin'));
+const CommunityQrAdmin = lazy(
+  () => import('../pages/community/CommunityQrAdmin')
+);
 const Login = lazy(() => import('../pages/auth/Login'));
 const Cards = lazy(() => import('../pages/card/Cards'));
 const CreateCard = lazy(() => import('../pages/card/CardCreate'));
@@ -177,6 +181,7 @@ const router = createBrowserRouter(
           path: 'page-poster',
           element: createLazyRoute(<DialoguePoster />),
         },
+        { path: 'join', element: createLazyRoute(<CommunityJoin />) },
         { path: 'login', element: createLazyRoute(<Login />) },
         {
           path: 'forgot-password',
@@ -259,6 +264,10 @@ const router = createBrowserRouter(
         {
           path: 'meetup-participants-list',
           element: createOrganizerProtectedRoute(<MeetupParticipantsList />),
+        },
+        {
+          path: 'admin/community-qr',
+          element: createOrganizerProtectedRoute(<CommunityQrAdmin />),
         },
 
         // 404路由

@@ -1,0 +1,168 @@
+.page {
+  min-height: 70vh;
+  padding: clamp(3rem, 8vw, 7rem) 1rem;
+  background:
+    radial-gradient(circle at 85% 10%, rgba(255, 178, 139, 0.22), transparent 28rem),
+    #fbf8f2;
+  color: #302d2a;
+}
+
+.card {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: clamp(2rem, 6vw, 4rem);
+  border: 1px solid #e6ddd3;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 24px 70px rgba(78, 55, 39, 0.08);
+  text-align: center;
+}
+
+.adminCard {
+  width: min(100%, 900px);
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 1rem;
+  color: #d96642;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.card h1 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(2.2rem, 6vw, 3.8rem);
+  line-height: 1.15;
+}
+
+.intro {
+  max-width: 560px;
+  margin: 1.25rem auto 2rem;
+  color: #625b54;
+  font-size: 1.05rem;
+  line-height: 1.8;
+}
+
+.qrFrame,
+.previewBox {
+  display: grid;
+  place-items: center;
+  width: min(100%, 380px);
+  min-height: 320px;
+  margin: 0 auto;
+  padding: 1rem;
+  border: 1px solid #e5dcd3;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.qrFrame img,
+.previewBox img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+  object-fit: contain;
+}
+
+.tip,
+.help {
+  display: block;
+  margin-top: 1.25rem;
+  color: #80766d;
+  line-height: 1.6;
+}
+
+.status {
+  margin: 0;
+  color: #80766d;
+}
+
+.error,
+.success {
+  margin: 1rem 0 0;
+  font-weight: 600;
+}
+
+.error {
+  color: #b43d2a;
+}
+
+.success {
+  color: #28704f;
+}
+
+.adminGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  text-align: left;
+}
+
+.adminGrid h2 {
+  margin: 0 0 0.8rem;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+}
+
+.previewBox {
+  min-height: 260px;
+}
+
+.controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.fileButton,
+.updateButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0.75rem 1.35rem;
+  border: 1px solid #d96642;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.fileButton {
+  background: transparent;
+  color: #b94d2d;
+}
+
+.fileButton input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.updateButton {
+  background: #d96642;
+  color: #fff;
+}
+
+.updateButton:disabled {
+  border-color: #cfc5bb;
+  background: #cfc5bb;
+  cursor: not-allowed;
+}
+
+@media (max-width: 680px) {
+  .adminGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+}

@@ -341,10 +341,28 @@ const Home: React.FC = () => {
             variant="caption"
             display="block"
             color="text.secondary"
-            sx={{ mt: 1 }}
+            sx={{ mt: 1, mb: 2 }}
           >
             启发星球笔记
           </Typography>
+          <Button
+            variant="contained"
+            component={Link}
+            to="/join"
+            size="small"
+            sx={{
+              px: 2.5,
+              borderRadius: 99,
+              backgroundColor: '#ff6348',
+              boxShadow: 'none',
+              '&:hover': {
+                backgroundColor: '#ff4500',
+                boxShadow: 'none',
+              },
+            }}
+          >
+            加入微信群
+          </Button>
         </section>
 
         {/* 树洞与互助 */}
