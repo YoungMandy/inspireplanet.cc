@@ -100,6 +100,7 @@ const createOrganizerProtectedRoute = (Component: React.ReactNode) => (
 const Home = lazy(() => import('../pages/home/Home'));
 const About = lazy(() => import('../pages/introduce/About'));
 const Contact = lazy(() => import('../pages/introduce/Contact'));
+const Contribution = lazy(() => import('../pages/contribute/Contribution'));
 const ClarifyTogether = lazy(
   () => import('../pages/dialogue/ClarifyTogether')
 );
@@ -165,6 +166,7 @@ const router = createBrowserRouter(
         { path: 'about', element: createLazyRoute(<About />) },
         { path: 'home', element: createLazyRoute(<Home />) },
         { path: 'contact', element: createLazyRoute(<Contact />) },
+        { path: 'contribute', element: createLazyRoute(<Contribution />) },
         {
           path: 'clarify-together',
           element: createLazyRoute(<ClarifyTogether />),

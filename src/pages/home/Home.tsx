@@ -306,101 +306,79 @@ const Home: React.FC = () => {
     },
   ];
 
+  const entryPoints = [
+    {
+      eyebrow: '阅读',
+      title: '启发周刊',
+      description: '读一读社群里真实的经历、思考和启发。',
+      label: '查看最新周刊',
+      to: '/weekly-cards',
+    },
+    {
+      eyebrow: '相遇',
+      title: '参加活动',
+      description: '看看接下来有哪些线上分享和线下活动。',
+      label: '查看活动日历',
+      to: '/activity-calendar',
+    },
+    {
+      eyebrow: '连接',
+      title: '加入社群',
+      description: '认识愿意真实分享、彼此启发的人。',
+      label: '加入微信群',
+      to: '/join',
+    },
+    {
+      eyebrow: '分享',
+      title: '向我们投稿',
+      description: '写下一段经历、一个问题，或一件想分享的小事。',
+      label: '开始投稿',
+      to: '/contribute',
+    },
+  ];
+
   return (
     <div className={styles['home-container']}>
       <Container maxWidth="lg">
         {/* Hero 区域 */}
         <section className={styles['hero-section']}>
+          <p className={styles['hero-eyebrow']}>启发星球</p>
+          <h1 className={styles['hero-title']}>让具体的经历被听见</h1>
           <p className={styles['hero-desc']}>
             一个线上社群。真实，不评判，相信每个人具体的经历都有力量。
           </p>
         </section>
 
-        {/* 关注公众号 */}
-        <section
-          className={styles['stories-section']}
-          style={{ textAlign: 'center' }}
-        >
-          <h2 className={styles['stories-title']}>加入社群</h2>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-            扫码关注「启发星球笔记」公众号
-            <br />
-            了解社群动态，通过公众号联系我们加入微信群
-          </Typography>
-          <img
-            src="/images/qrcode_for_gh_e0969fd9d88b_344.jpg"
-            alt="启发星球笔记公众号"
-            style={{
-              width: 160,
-              height: 160,
-              borderRadius: 10,
-              border: '1px solid #f0f0f0',
-            }}
-          />
-          <Typography
-            variant="caption"
-            display="block"
-            color="text.secondary"
-            sx={{ mt: 1, mb: 2 }}
-          >
-            启发星球笔记
-          </Typography>
-          <Button
-            variant="contained"
-            component={Link}
-            to="/join"
-            size="small"
-            sx={{
-              px: 2.5,
-              borderRadius: 99,
-              backgroundColor: '#ff6348',
-              boxShadow: 'none',
-              '&:hover': {
-                backgroundColor: '#ff4500',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            加入微信群
-          </Button>
-        </section>
-
-        {/* 树洞与互助 */}
-        <section
-          className={styles['stories-section']}
-          style={{ textAlign: 'center' }}
-        >
-          <h2 className={styles['stories-title']}>树洞与互助</h2>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-            树洞和互助文档已更新，欢迎大家在这里互帮互助。
-          </Typography>
-          <Button
-            variant="outlined"
+        {/* 首页主要入口 */}
+        <section className={styles['entry-section']}>
+          <div className={styles['section-heading']}>
+            <p>从这里开始</p>
+            <h2>你可以怎样来到启发星球</h2>
+          </div>
+          <div className={styles['entry-grid']}>
+            {entryPoints.map((entry) => (
+              <Link
+                key={entry.to}
+                to={entry.to}
+                className={styles['entry-card']}
+              >
+                <span>{entry.eyebrow}</span>
+                <h3>{entry.title}</h3>
+                <p>{entry.description}</p>
+                <strong>
+                  {entry.label} <ChevronRight fontSize="inherit" />
+                </strong>
+              </Link>
+            ))}
+          </div>
+          <a
+            className={styles['mutual-aid-link']}
             href={mutualAidDocUrl}
             target="_blank"
             rel="noopener noreferrer"
-            size="small"
-            sx={{
-              borderColor: '#ff6348',
-              color: '#ff6348',
-              '&:hover': { borderColor: '#ff4500', color: '#ff4500' },
-            }}
           >
-            打开树洞互助文档
-          </Button>
-        </section>
-
-        {/* 成员故事 */}
-        <section className={styles['stories-section']}>
-          <h2 className={styles['stories-title']}>在这里发生的事</h2>
-          <div className={styles['stories-grid']}>
-            {stories.map((story, i) => (
-              <blockquote key={i} className={styles['story-card']}>
-                <p className={styles['story-text']}>{story.text}</p>
-                {/* <footer className={styles['story-footer']}>— 成员</footer> */}
-              </blockquote>
-            ))}
-          </div>
+            需要倾诉或寻求帮助？打开树洞互助文档 →
+          </a>
         </section>
 
         {/* 近期活动 */}
@@ -515,6 +493,18 @@ const Home: React.FC = () => {
               <Star fontSize="inherit" />
               查看往期周刊
             </Button>
+          </div>
+        </section>
+
+        {/* 成员故事 */}
+        <section className={styles['stories-section']}>
+          <h2 className={styles['stories-title']}>在这里发生的事</h2>
+          <div className={styles['stories-grid']}>
+            {stories.map((story, i) => (
+              <blockquote key={i} className={styles['story-card']}>
+                <p className={styles['story-text']}>{story.text}</p>
+              </blockquote>
+            ))}
           </div>
         </section>
       </Container>
