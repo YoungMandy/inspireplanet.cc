@@ -116,9 +116,6 @@ const Header: React.FC<HeaderProps> = ({
     navigate('/');
   };
 
-  const mutualAidDocUrl =
-    'https://docs.qq.com/sheet/DWU1EcU5YSmRVWnZZ?tab=BB08J2';
-
   // 菜单项定义
   const topNavItems: NavItem[] = [
     { path: '/', label: '首页', icon: <Home fontSize="small" /> },
@@ -131,11 +128,6 @@ const Header: React.FC<HeaderProps> = ({
       path: '/clarify-together',
       label: '对话实验',
       icon: <Forum fontSize="small" />,
-    },
-    {
-      href: mutualAidDocUrl,
-      label: '树洞互助',
-      icon: <Info fontSize="small" />,
     },
   ];
 
@@ -162,7 +154,7 @@ const Header: React.FC<HeaderProps> = ({
   ];
 
   const cardsMenuItems: NavItem[] = [
-    { path: '/cards', label: '卡片广场' },
+    { path: '/cards', label: '近期卡片' },
     { path: '/create-card', label: '创建卡片' },
   ];
 

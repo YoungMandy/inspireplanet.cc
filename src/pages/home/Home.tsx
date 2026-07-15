@@ -51,6 +51,15 @@ const MeetupModeLabel: Record<string, string> = {
 const mutualAidDocUrl =
   'https://docs.qq.com/sheet/DWU1EcU5YSmRVWnZZ?tab=BB08J2';
 
+type EntryPoint = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  label: string;
+  to?: string;
+  href?: string;
+};
+
 const Home: React.FC = () => {
   const [cards, setCards] = useState<WeeklyCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +68,7 @@ const Home: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [gradients, setGradients] = useState<string[]>([]);
+  const [showWechatQr, setShowWechatQr] = useState(false);
   marked.setOptions({ breaks: true });
 
   // 加载最新卡片数据
@@ -306,13 +316,13 @@ const Home: React.FC = () => {
     },
   ];
 
-  const entryPoints = [
+  const entryPoints: EntryPoint[] = [
     {
-      eyebrow: '阅读',
-      title: '启发周刊',
-      description: '读一读社群里真实的经历、思考和启发。',
-      label: '查看最新周刊',
-      to: '/weekly-cards',
+      eyebrow: '创作',
+      title: '创建卡片',
+      description: '记录一句触动你的话，让当下的启发留下来。',
+      label: '开始创建卡片',
+      to: '/create-card',
     },
     {
       eyebrow: '相遇',
@@ -322,11 +332,25 @@ const Home: React.FC = () => {
       to: '/activity-calendar',
     },
     {
+      eyebrow: '探索',
+      title: '对话实验',
+      description: '带着一个真实问题，一起把它说得更清楚。',
+      label: '了解对话实验',
+      to: '/clarify-together',
+    },
+    {
       eyebrow: '连接',
       title: '加入社群',
       description: '认识愿意真实分享、彼此启发的人。',
       label: '加入微信群',
       to: '/join',
+    },
+    {
+      eyebrow: '互助',
+      title: '树洞互助',
+      description: '说出此刻的困扰，也看看是否能帮到别人。',
+      label: '打开互助文档',
+      href: mutualAidDocUrl,
     },
     {
       eyebrow: '分享',
@@ -356,29 +380,39 @@ const Home: React.FC = () => {
             <h2>你可以怎样来到启发星球</h2>
           </div>
           <div className={styles['entry-grid']}>
-            {entryPoints.map((entry) => (
-              <Link
-                key={entry.to}
-                to={entry.to}
-                className={styles['entry-card']}
-              >
-                <span>{entry.eyebrow}</span>
-                <h3>{entry.title}</h3>
-                <p>{entry.description}</p>
-                <strong>
-                  {entry.label} <ChevronRight fontSize="inherit" />
-                </strong>
-              </Link>
-            ))}
+            {entryPoints.map((entry) => {
+              const content = (
+                <>
+                  <span>{entry.eyebrow}</span>
+                  <h3>{entry.title}</h3>
+                  <p>{entry.description}</p>
+                  <strong>
+                    {entry.label} <ChevronRight fontSize="inherit" />
+                  </strong>
+                </>
+              );
+
+              return entry.href ? (
+                <a
+                  key={entry.href}
+                  href={entry.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles['entry-card']}
+                >
+                  {content}
+                </a>
+              ) : (
+                <Link
+                  key={entry.to}
+                  to={entry.to || '/'}
+                  className={styles['entry-card']}
+                >
+                  {content}
+                </Link>
+              );
+            })}
           </div>
-          <a
-            className={styles['mutual-aid-link']}
-            href={mutualAidDocUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            需要倾诉或寻求帮助？打开树洞互助文档 →
-          </a>
         </section>
 
         {/* 近期活动 */}
@@ -508,6 +542,37 @@ const Home: React.FC = () => {
           </div>
         </section>
       </Container>
+
+      <aside
+        className={`${styles['wechat-float']} ${
+          showWechatQr ? styles['wechat-float-open'] : ''
+        }`}
+      >
+        <div className={styles['wechat-panel']}>
+          <button
+            type="button"
+            className={styles['wechat-close']}
+            aria-label="关闭公众号二维码"
+            onClick={() => setShowWechatQr(false)}
+          >
+            ×
+          </button>
+          <strong>启发星球笔记</strong>
+          <span>微信扫码关注公众号</span>
+          <img
+            src="/images/qrcode_for_gh_e0969fd9d88b_344.jpg"
+            alt="启发星球笔记公众号二维码"
+          />
+        </div>
+        <button
+          type="button"
+          className={styles['wechat-trigger']}
+          aria-expanded={showWechatQr}
+          onClick={() => setShowWechatQr((current) => !current)}
+        >
+          关注公众号
+        </button>
+      </aside>
     </div>
   );
 };

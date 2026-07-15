@@ -56,7 +56,7 @@
 
 .entry-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
 }
 
@@ -110,19 +110,6 @@
   color: #c95837;
   font-size: 0.88rem;
   font-weight: 600;
-}
-
-.mutual-aid-link {
-  display: block;
-  margin-top: 1.2rem;
-  color: #706961;
-  font-size: 0.88rem;
-  text-align: center;
-  text-decoration: none;
-}
-
-.mutual-aid-link:hover {
-  color: #c95837;
 }
 
 .hero-sub {
@@ -244,6 +231,90 @@
   padding-bottom: 56px;
 }
 
+.wechat-float {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.wechat-trigger {
+  padding: 0.58rem 0.9rem;
+  border: 1px solid #d9d1ca;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 4px 16px rgba(58, 45, 37, 0.08);
+  color: #625b54;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.wechat-trigger:hover {
+  border-color: #d6a28f;
+  box-shadow: 0 6px 20px rgba(58, 45, 37, 0.12);
+  color: #c95837;
+}
+
+.wechat-panel {
+  position: relative;
+  display: none;
+  width: 190px;
+  padding: 1rem;
+  border: 1px solid #e5dcd3;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 36px rgba(58, 45, 37, 0.14);
+  text-align: center;
+}
+
+.wechat-float-open .wechat-panel {
+  display: grid;
+}
+
+.wechat-panel strong {
+  color: #3b3733;
+  font-size: 0.94rem;
+}
+
+.wechat-panel span {
+  margin: 0.25rem 0 0.75rem;
+  color: #847b73;
+  font-size: 0.76rem;
+}
+
+.wechat-panel img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.wechat-close {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: #9b938c;
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wechat-float:hover .wechat-panel,
+  .wechat-float:focus-within .wechat-panel {
+    display: grid;
+  }
+}
+
 /* 轮播部分 */
 .carousel-section {
   margin-bottom: 3rem;
@@ -292,6 +363,15 @@
 @media (max-width: 600px) {
   .home-container {
     padding: 0rem 0.5rem;
+  }
+
+  .wechat-float {
+    right: 0.75rem;
+    bottom: 0.75rem;
+  }
+
+  .wechat-panel {
+    width: 176px;
   }
 
   .view-all-button {
