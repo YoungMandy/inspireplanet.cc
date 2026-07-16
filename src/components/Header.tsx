@@ -129,6 +129,11 @@ const Header: React.FC<HeaderProps> = ({
       label: '对话实验',
       icon: <Forum fontSize="small" />,
     },
+    {
+      path: '/writing-circle',
+      label: '书写圈子',
+      icon: <Forum fontSize="small" />,
+    },
   ];
 
   // 构建活动菜单，只对 organizer 显示报名管理
@@ -591,6 +596,14 @@ const Header: React.FC<HeaderProps> = ({
                 >
                   <CardMembership fontSize="small" sx={{ mr: 1 }} />
                   我的卡片
+                </MenuItem>
+                <MenuItem
+                  component={Link}
+                  to="/writing-circle?scope=mine"
+                  onClick={() => setUserMenuAnchor(null)}
+                >
+                  <Forum fontSize="small" sx={{ mr: 1 }} />
+                  我的书写
                 </MenuItem>
                 <MenuItem
                   component={Link}

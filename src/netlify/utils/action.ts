@@ -29,7 +29,7 @@ export function getFunctionNameFromEvent(
     if (event.body) {
       const body = JSON.parse(event.body);
       const result = body.functionName || body.action;
-      console.log('  → POST/PUT body result:', result, 'body:', body);
+      console.log('  → POST/PUT action:', result);
       return result;
     }
   } catch (error) {
@@ -70,7 +70,6 @@ export function getDataFromEvent(event: NetlifyEvent): any {
       // 移除 action/functionName 字段，避免污染数据
       delete result['action'];
       delete result['functionName'];
-      console.log('  → POST/PUT result:', result);
       return result || {};
     }
   } catch (error) {
