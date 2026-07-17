@@ -60,6 +60,29 @@ export interface WritingPost {
   created_at: string;
   updated_at: string;
   can_edit: boolean;
+  resonance_count: number;
+  has_resonated: boolean;
+  comment_count: number;
+}
+
+export interface WritingComment {
+  id: string;
+  post_id: string;
+  user_id: string;
+  parent_id?: string | null;
+  content: string;
+  author: WritingAuthor;
+  created_at: string;
+  can_delete: boolean;
+}
+
+export interface WritingAdminStats {
+  total_posts: number;
+  public_posts: number;
+  active_writers: number;
+  total_resonances: number;
+  total_comments: number;
+  popular_topics: Array<WritingTopic & { post_count: number }>;
 }
 
 export interface WritingAnswerInput {
@@ -73,7 +96,7 @@ export interface CreateWritingRequest {
   image_urls?: string[];
   template_id?: string | null;
   template_answers?: WritingAnswerInput[];
-  topic_ids: string[];
+  topic_ids?: string[];
   visibility: WritingVisibility;
 }
 

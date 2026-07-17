@@ -24,3 +24,5 @@ export { default as submissionsApi } from '../services/submissions';
 export { default as writingsApi } from '../services/writings';
 export { default as writingTopicsApi } from '../services/writingTopics';
 export { default as writingTemplatesApi } from '../services/writingTemplates';
+export { default as writingInteractionsApi } from '../services/writingInteractions';
+export { default as writingAdminApi } from '../services/writingAdmin';

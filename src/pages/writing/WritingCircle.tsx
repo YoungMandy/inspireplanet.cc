@@ -18,12 +18,13 @@ import {
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import WritingCard from '../../components/writing/WritingCard';
 import Loading from '../../components/Loading';
 import Empty from '../../components/Empty';
 import { WritingPost, WritingTopic } from '../../netlify/types';
 import { writingsApi, writingTopicsApi } from '../../netlify/config';
-import { isUserLoggedIn } from '../../utils/user';
+import { isOrganizer, isUserLoggedIn } from '../../utils/user';
 
 const PAGE_SIZE = 9;
 
@@ -148,15 +149,26 @@ const WritingCircle: React.FC = () => {
                 用话题和书写模板记录自我观察，让零散的感受慢慢成为可以回看的成长轨迹。
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleCreate}
-              size="large"
-              sx={{ alignSelf: { xs: 'stretch', md: 'center' } }}
-            >
-              开始书写
-            </Button>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              {isOrganizer() && (
+                <Button
+                  variant="outlined"
+                  startIcon={<AdminPanelSettingsIcon />}
+                  onClick={() => navigate('/admin/writing-circle')}
+                  size="large"
+                >
+                  圈子后台
+                </Button>
+              )}
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleCreate}
+                size="large"
+              >
+                开始书写
+              </Button>
+            </Stack>
           </Stack>
         </Paper>
 

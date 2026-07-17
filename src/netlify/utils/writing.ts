@@ -90,9 +90,7 @@ export function mapWritingPost(
       .map((link: any) => link?.topic)
       .filter(Boolean)
       .map(mapWritingTopic)
-      .sort(
-        (a: WritingTopic, b: WritingTopic) => a.sort_order - b.sort_order
-      ),
+      .sort((a: WritingTopic, b: WritingTopic) => a.sort_order - b.sort_order),
     author: {
       id: author?.id ? String(author.id) : String(row.user_id || ''),
       name: author?.name || author?.username || '匿名用户',
@@ -104,5 +102,8 @@ export function mapWritingPost(
     updated_at: row.updated_at,
     can_edit:
       Boolean(currentUserId) && String(row.user_id) === String(currentUserId),
+    resonance_count: Number(row.resonance_count) || 0,
+    has_resonated: Boolean(row.has_resonated),
+    comment_count: Number(row.comment_count) || 0,
   };
 }

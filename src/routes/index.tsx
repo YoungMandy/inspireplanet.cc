@@ -151,6 +151,7 @@ const MeetupParticipantsList = lazy(
 const WritingCircle = lazy(() => import('../pages/writing/WritingCircle'));
 const WritingEditor = lazy(() => import('../pages/writing/WritingEditor'));
 const WritingDetail = lazy(() => import('../pages/writing/WritingDetail'));
+const WritingAdmin = lazy(() => import('../pages/writing/WritingAdmin'));
 
 // 创建路由器
 const router = createBrowserRouter(
@@ -285,6 +286,10 @@ const router = createBrowserRouter(
         {
           path: 'admin/community-qr',
           element: createOrganizerProtectedRoute(<CommunityQrAdmin />),
+        },
+        {
+          path: 'admin/writing-circle',
+          element: createOrganizerProtectedRoute(<WritingAdmin />),
         },
 
         // 404路由
