@@ -9,8 +9,9 @@ import {
   Typography,
 } from '@mui/material';
 import { WritingPost } from '../../netlify/types';
-import { formatDate } from '../../utils/date';
+import { formatLocalDateTime } from '../../utils/date';
 import HighlightedText from './HighlightedText';
+import TopicChip from './TopicChip';
 
 interface WritingCardProps {
   post: WritingPost;
@@ -29,17 +30,22 @@ const WritingCard: React.FC<WritingCardProps> = ({ post, onClick }) => {
   const preview = getPreview(post);
   const title =
     post.title || post.template_snapshot?.template_name || '一则自我观察';
+  const templateItems =
+    post.template_snapshot?.items.filter((item) => item.answer.trim()) || [];
 
   return (
     <Card
-      elevation={1}
+      elevation={0}
       sx={{
         height: '100%',
         borderRadius: 3,
         border: '1px solid',
         borderColor: 'divider',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        '&:hover': { transform: 'translateY(-3px)', boxShadow: 4 },
+        transition: 'transform 0.2s ease, border-color 0.2s ease',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          borderColor: '#c9bdb0',
+        },
       }}
     >
       <CardActionArea onClick={() => onClick(post.id)} sx={{ height: '100%' }}>
@@ -51,22 +57,6 @@ const WritingCard: React.FC<WritingCardProps> = ({ post, onClick }) => {
             p: 3,
           }}
         >
-          {post.image_urls[0] && (
-            <Box
-              component="img"
-              src={post.image_urls[0]}
-              alt={title}
-              loading="lazy"
-              sx={{
-                width: 'calc(100% + 48px)',
-                height: 190,
-                objectFit: 'cover',
-                mx: -3,
-                mt: -3,
-                mb: 2.5,
-              }}
-            />
-          )}
           <Stack
             direction="row"
             spacing={1}
@@ -89,37 +79,99 @@ const WritingCard: React.FC<WritingCardProps> = ({ post, onClick }) => {
           <Typography variant="h6" component="h2" fontWeight={700} gutterBottom>
             {title}
           </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{
-              whiteSpace: 'pre-wrap',
-              display: '-webkit-box',
-              WebkitBoxOrient: 'vertical',
-              WebkitLineClamp: 5,
-              overflow: 'hidden',
-              minHeight: 100,
-              mb: 2,
-            }}
-          >
-            <HighlightedText text={preview || '还没有正文内容'} />
-          </Typography>
+          {templateItems.length > 0 ? (
+            <Stack spacing={1.25} sx={{ minHeight: 100, mb: 2 }}>
+              {templateItems.slice(0, 2).map((item) => (
+                <Box key={item.key}>
+                  <Typography
+                    variant="caption"
+                    fontWeight={700}
+                    color="text.primary"
+                    sx={{ display: 'block', mb: 0.25 }}
+                  >
+                    {item.prompt}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      whiteSpace: 'pre-wrap',
+                      display: '-webkit-box',
+                      WebkitBoxOrient: 'vertical',
+                      WebkitLineClamp: 2,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <HighlightedText text={item.answer} />
+                  </Typography>
+                </Box>
+              ))}
+              {templateItems.length > 2 && (
+                <Typography variant="caption" color="text.disabled">
+                  还有 {templateItems.length - 2} 个问题的回答
+                </Typography>
+              )}
+            </Stack>
+          ) : (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                whiteSpace: 'pre-wrap',
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: 5,
+                overflow: 'hidden',
+                minHeight: 100,
+                mb: 2,
+              }}
+            >
+              <HighlightedText text={preview || '还没有正文内容'} />
+            </Typography>
+          )}
+
+          {post.image_urls.length > 0 && (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns:
+                  post.image_urls.length === 1
+                    ? '1fr'
+                    : `repeat(${Math.min(post.image_urls.length, 3)}, minmax(0, 1fr))`,
+                gap: 0.75,
+                mb: 2,
+              }}
+            >
+              {post.image_urls.slice(0, 3).map((imageUrl, index) => (
+                <Box
+                  key={imageUrl}
+                  component="img"
+                  src={imageUrl}
+                  alt={`${title}配图 ${index + 1}`}
+                  loading="lazy"
+                  sx={{
+                    display: 'block',
+                    width: '100%',
+                    aspectRatio:
+                      post.image_urls.length === 1 ? '4 / 3' : '1 / 1',
+                    maxHeight: post.image_urls.length === 1 ? 210 : 120,
+                    objectFit: 'cover',
+                    borderRadius: 1.5,
+                  }}
+                />
+              ))}
+            </Box>
+          )}
 
           <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 2 }}>
             {post.topics.map((topic) => (
-              <Chip
-                key={topic.id}
-                label={topic.name}
-                size="small"
-                color={topic.is_user_created ? 'secondary' : 'default'}
-                variant={topic.is_user_created ? 'filled' : 'outlined'}
-              />
+              <TopicChip key={topic.id} topic={topic} size="small" />
             ))}
           </Box>
 
           <Box sx={{ mt: 'auto' }}>
             <Typography variant="caption" color="text.secondary">
-              {post.author.name} · {formatDate(post.created_at)}
+              {post.author.name} · {formatLocalDateTime(post.created_at)}
             </Typography>
           </Box>
         </CardContent>

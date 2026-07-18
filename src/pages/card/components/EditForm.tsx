@@ -22,6 +22,8 @@ import {
   MenuItem,
   Paper,
   IconButton,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import TextareaAutosize from '@mui/material/TextareaAutosize';
@@ -479,6 +481,22 @@ const EditForm = forwardRef<EditFormRef, EditFormProps>(
                       />
                     </FormControl>
 
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={Boolean(cardData.is_private)}
+                          onChange={(event) =>
+                            setCardData((previous) => ({
+                              ...previous,
+                              is_private: event.target.checked,
+                            }))
+                          }
+                        />
+                      }
+                      label="设为私密（仅自己可见）"
+                      sx={{ mb: 3 }}
+                    />
+
                     {/* 背景渐变选择 */}
                     <FormControl fullWidth sx={{ mb: 3 }}>
                       <Typography variant="subtitle2" gutterBottom>
@@ -679,7 +697,7 @@ const EditForm = forwardRef<EditFormRef, EditFormProps>(
                             sx={{ mr: 1 }}
                           />
                         ) : null}
-                        {submitButtonText}
+                        {cardData.is_private ? '保存' : submitButtonText}
                       </Button>
                     </Box>
                   </form>

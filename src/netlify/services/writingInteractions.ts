@@ -20,12 +20,14 @@ export const writingInteractionsApi = {
   addComment: (
     postId: string,
     content: string,
-    parentId?: string | null
+    parentId?: string | null,
+    isAnonymous = false
   ): Promise<ApiResponse<{ comment: WritingComment }>> =>
     http.post('/writingInteractions', 'addComment', {
       post_id: postId,
       content,
       parent_id: parentId || null,
+      is_anonymous: isAnonymous,
     }),
   deleteComment: (id: string): Promise<ApiResponse<{ id: string }>> =>
     http.delete('/writingInteractions', 'deleteComment', { id }),

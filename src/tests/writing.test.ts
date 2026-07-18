@@ -88,6 +88,35 @@ describe('writing mappers', () => {
     });
   });
 
+  it('hides the identity of an anonymous writer from other users', () => {
+    const post = mapWritingPost(
+      {
+        id: 13,
+        user_id: 7,
+        title: '一则匿名观察',
+        body: '今天我想安静地记录。',
+        image_urls: [],
+        is_anonymous: true,
+        visibility: 'public',
+        status: 'published',
+        created_at: '2026-07-18T10:00:00.000Z',
+        updated_at: '2026-07-18T10:00:00.000Z',
+        author: { id: 7, name: '真实姓名', username: 'private-account' },
+        topic_links: [],
+      },
+      '8'
+    );
+
+    expect(post.is_anonymous).toBe(true);
+    expect(post.user_id).toBe('');
+    expect(post.author).toEqual({
+      id: '',
+      name: '匿名书写者',
+      username: null,
+    });
+    expect(post.can_edit).toBe(false);
+  });
+
   it('extracts and tokenizes unique hashtags', () => {
     expect(
       extractHashtags('今天在练习 #情绪觉察，也看见了 #边界感', '#情绪觉察')

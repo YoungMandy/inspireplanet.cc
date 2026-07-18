@@ -22,6 +22,7 @@ const CardEdit: React.FC = () => {
     font: 'Noto Sans SC',
     image_path: '',
     created: new Date().toISOString(),
+    is_private: false,
   });
 
   // UI状态

@@ -15,6 +15,7 @@ import {
   RadioGroup,
   Select,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material';
@@ -36,6 +37,7 @@ import {
 } from '../../netlify/config';
 import { useGlobalSnackbar } from '../../context/app';
 import { extractHashtags } from '../../utils/hashtags';
+import TopicChip from '../../components/writing/TopicChip';
 
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
@@ -62,7 +64,8 @@ const WritingEditor: React.FC = () => {
   const [promptFields, setPromptFields] = useState<WritingTemplatePrompt[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [topicIds, setTopicIds] = useState<string[]>([]);
-  const [visibility, setVisibility] = useState<WritingVisibility>('private');
+  const [visibility, setVisibility] = useState<WritingVisibility>('public');
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [historicalTemplateName, setHistoricalTemplateName] = useState('');
@@ -107,6 +110,7 @@ const WritingEditor: React.FC = () => {
           setBody(post.body || '');
           setTemplateId(post.template_id || '');
           setVisibility(post.visibility);
+          setIsAnonymous(post.is_anonymous);
           setImageUrls(post.image_urls || []);
 
           const savedHashtags = extractHashtags(
@@ -263,6 +267,7 @@ const WritingEditor: React.FC = () => {
       })),
       topic_ids: topicIds,
       visibility,
+      is_anonymous: isAnonymous,
     };
 
     setSaving(true);
@@ -413,7 +418,17 @@ const WritingEditor: React.FC = () => {
                 {detectedHashtags.length ? (
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     {detectedHashtags.map((hashtag) => (
-                      <Chip key={hashtag} label={hashtag} color="secondary" />
+                      <Chip
+                        key={hashtag}
+                        label={hashtag}
+                        variant="outlined"
+                        sx={{
+                          borderColor: '#d9c8df',
+                          bgcolor: '#faf6fc',
+                          color: '#735b7c',
+                          fontWeight: 500,
+                        }}
+                      />
                     ))}
                   </Box>
                 ) : (
@@ -519,11 +534,10 @@ const WritingEditor: React.FC = () => {
                     .map((topic) => {
                       const selected = topicIds.includes(topic.id);
                       return (
-                        <Chip
+                        <TopicChip
                           key={topic.id}
-                          label={topic.name}
-                          color={selected ? 'primary' : 'default'}
-                          variant={selected ? 'filled' : 'outlined'}
+                          topic={topic}
+                          selected={selected}
                           onClick={() => toggleTopic(topic.id)}
                         />
                       );
@@ -544,14 +558,24 @@ const WritingEditor: React.FC = () => {
                   <FormControlLabel
                     value="private"
                     control={<Radio />}
-                    label="仅自己可见（推荐用于较私密的观察）"
+                    label="仅自己可见"
                   />
                   <FormControlLabel
                     value="public"
                     control={<Radio />}
-                    label="公开到书写圈子"
+                    label="公开到书写圈子（默认）"
                   />
                 </RadioGroup>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={isAnonymous}
+                      onChange={(event) => setIsAnonymous(event.target.checked)}
+                    />
+                  }
+                  label="匿名发布（公开后不展示你的姓名和账号）"
+                  sx={{ mt: 1 }}
+                />
               </Box>
 
               <Stack

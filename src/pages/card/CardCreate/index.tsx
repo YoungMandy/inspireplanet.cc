@@ -32,6 +32,7 @@ const CreateCard: React.FC = () => {
       font: 'Noto Sans SC',
       gradient_class: randomGradient.class,
       image_path: '',
+      is_private: false,
     };
   };
 
@@ -55,10 +56,15 @@ const CreateCard: React.FC = () => {
     const response = await cardsApi.create(cardToSubmit);
 
     if (response.success) {
-      showSnackbar.success('卡片提交成功！');
+      showSnackbar.success(
+        cardToSubmit.is_private ? '私密卡片已保存！' : '卡片提交成功！'
+      );
       // 重置表单
       setInitialCardData(getInitialCardData());
-      setTimeout(() => navigate('/cards'), 1000);
+      setTimeout(
+        () => navigate(cardToSubmit.is_private ? '/my-cards' : '/cards'),
+        1000
+      );
     } else {
       throw new Error(response.error || '提交失败');
     }

@@ -6,10 +6,12 @@ import {
   TextField,
   Card,
   IconButton,
+  Chip,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import EditIcon from '@mui/icons-material/Edit';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
@@ -117,6 +119,21 @@ const InspireCard: React.FC<InspireCardProps> = ({
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         }}
       >
+        {card.is_private && (
+          <Chip
+            icon={<LockOutlinedIcon />}
+            label="仅自己可见"
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              zIndex: 1,
+              bgcolor: 'rgba(255,255,255,0.86)',
+              color: '#5f554c',
+            }}
+          />
+        )}
         {/* 卡片图片 */}
         {finalImage && (
           <Box

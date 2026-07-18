@@ -47,6 +47,7 @@ interface PreparedWriting {
   topic_ids: string[];
   custom_topic_names: string[];
   image_urls: string[];
+  is_anonymous: boolean;
 }
 
 export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
@@ -272,6 +273,7 @@ async function prepareWriting(
     topic_ids,
     custom_topic_names,
     image_urls,
+    is_anonymous: Boolean(payload.is_anonymous),
   };
 }
 
@@ -292,6 +294,13 @@ async function handleGetAll(event: NetlifyEvent): Promise<NetlifyResponse> {
   const sort = requestData.sort === 'oldest' ? 'oldest' : 'latest';
   const page = parsePositiveInteger(requestData.page, 1, 100000);
   const page_size = parsePositiveInteger(requestData.page_size, 12, 50);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(requestData.date || ''))
+    ? String(requestData.date)
+    : '';
+  const parsedTimezoneOffset = Number(requestData.timezone_offset);
+  const timezoneOffset = Number.isFinite(parsedTimezoneOffset)
+    ? Math.max(-840, Math.min(840, parsedTimezoneOffset))
+    : 0;
   const currentUser = await getAuthenticatedUser(event);
 
   if (scope === 'mine' && !currentUser) {
@@ -330,6 +339,17 @@ async function handleGetAll(event: NetlifyEvent): Promise<NetlifyResponse> {
   }
 
   if (filteredPostIds) query = query.in('id', filteredPostIds);
+
+  if (date) {
+    const [year, month, day] = date.split('-').map(Number);
+    const start = new Date(
+      Date.UTC(year, month - 1, day) + timezoneOffset * 60 * 1000
+    );
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    query = query
+      .gte('created_at', start.toISOString())
+      .lt('created_at', end.toISOString());
+  }
 
   const from = (page - 1) * page_size;
   const { data, error, count } = await query
@@ -383,6 +403,19 @@ async function handleCreate(event: NetlifyEvent): Promise<NetlifyResponse> {
   });
 
   if (error || !postId) throw new RequestError('发布书写失败', 500);
+  const { error: anonymousError } = await supabase
+    .from('writing_posts')
+    .update({ is_anonymous: writing.is_anonymous })
+    .eq('id', postId)
+    .eq('user_id', currentUser.id);
+  if (anonymousError) {
+    await supabase
+      .from('writing_posts')
+      .delete()
+      .eq('id', postId)
+      .eq('user_id', currentUser.id);
+    throw new RequestError('设置匿名状态失败', 500);
+  }
   const row = await fetchWritingRow(String(postId));
   return createSuccessResponse(
     { post: mapWritingPost(row, currentUser.id) },
@@ -428,6 +461,12 @@ async function handleUpdate(event: NetlifyEvent): Promise<NetlifyResponse> {
   );
 
   if (error || !updated) throw new RequestError('更新书写失败', 500);
+  const { error: anonymousError } = await supabase
+    .from('writing_posts')
+    .update({ is_anonymous: writing.is_anonymous })
+    .eq('id', id)
+    .eq('user_id', currentUser.id);
+  if (anonymousError) throw new RequestError('设置匿名状态失败', 500);
   const row = await fetchWritingRow(id);
   return createSuccessResponse({ post: mapWritingPost(row, currentUser.id) });
 }

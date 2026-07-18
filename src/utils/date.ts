@@ -12,9 +12,22 @@ export const formatDateTime = (
   format = 'YYYY-MM-DD HH:mm'
 ): string => {
   if (!data) return '';
-  const d = typeof data === 'string' && data.includes('T')
-    ? dayjs.utc(data)
-    : dayjs(data);
+  const d =
+    typeof data === 'string' && data.includes('T')
+      ? dayjs.utc(data)
+      : dayjs(data);
+  return d.format(format);
+};
+
+export const formatLocalDateTime = (
+  data: string | Date,
+  format = 'YYYY-MM-DD HH:mm:ss'
+): string => {
+  if (!data) return '';
+  const d =
+    typeof data === 'string' && data.includes('T')
+      ? dayjs.utc(data).local()
+      : dayjs(data);
   return d.format(format);
 };
 
@@ -23,9 +36,10 @@ export const formatDate = (
   format = 'YYYY-MM-DD'
 ): string => {
   if (!data) return '';
-  const d = typeof data === 'string' && data.includes('T')
-    ? dayjs.utc(data)
-    : dayjs(data);
+  const d =
+    typeof data === 'string' && data.includes('T')
+      ? dayjs.utc(data)
+      : dayjs(data);
   return d.format(format);
 };
 
@@ -34,20 +48,19 @@ export const formatDateCN = (
   format = 'YYYY年MM月DD日'
 ): string => {
   if (!data) return '';
-  const d = typeof data === 'string' && data.includes('T')
-    ? dayjs.utc(data)
-    : dayjs(data);
+  const d =
+    typeof data === 'string' && data.includes('T')
+      ? dayjs.utc(data)
+      : dayjs(data);
   return d.format(format);
 };
 
-export const formatTime = (
-  data: string | Date,
-  format = 'HH:mm'
-): string => {
+export const formatTime = (data: string | Date, format = 'HH:mm'): string => {
   if (!data) return '';
-  const d = typeof data === 'string' && data.includes('T')
-    ? dayjs.utc(data)
-    : dayjs(data);
+  const d =
+    typeof data === 'string' && data.includes('T')
+      ? dayjs.utc(data)
+      : dayjs(data);
   return d.format(format);
 };
 

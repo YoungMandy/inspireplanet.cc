@@ -19,6 +19,7 @@ export interface CardItem {
   username?: string;
   likes_count?: number;
   update_time?: number;
+  is_private?: boolean;
 }
 
 // 评论数据接口

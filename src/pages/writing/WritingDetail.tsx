@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -8,21 +8,31 @@ import {
   Chip,
   Container,
   CircularProgress,
+  Dialog,
   Divider,
+  IconButton,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/Edit';
+import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
+import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
+import CloseIcon from '@mui/icons-material/Close';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined';
 import Loading from '../../components/Loading';
 import { WritingComment, WritingPost } from '../../netlify/types';
 import { writingInteractionsApi, writingsApi } from '../../netlify/config';
-import { formatDate } from '../../utils/date';
+import { formatDate, formatLocalDateTime } from '../../utils/date';
 import { useGlobalSnackbar } from '../../context/app';
 import HighlightedText from '../../components/writing/HighlightedText';
+import TopicChip from '../../components/writing/TopicChip';
 import { isUserLoggedIn } from '../../utils/user';
 
 const WritingDetail: React.FC = () => {
@@ -35,11 +45,14 @@ const WritingDetail: React.FC = () => {
   const [error, setError] = useState('');
   const [comments, setComments] = useState<WritingComment[]>([]);
   const [comment, setComment] = useState('');
+  const [commentAnonymous, setCommentAnonymous] = useState(false);
   const [replyTo, setReplyTo] = useState<WritingComment | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [interactionLoading, setInteractionLoading] = useState(true);
   const [resonanceLoading, setResonanceLoading] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
+  const interactionInputRef = useRef<HTMLInputElement>(null);
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(
     null
   );
@@ -136,7 +149,12 @@ const WritingDetail: React.FC = () => {
     if (!id || !comment.trim() || !requireLogin()) return;
     setSubmitting(true);
     try {
-      const response = await writingInteractionsApi.addComment(id, comment);
+      const response = await writingInteractionsApi.addComment(
+        id,
+        comment,
+        null,
+        commentAnonymous
+      );
       if (!response.success || !response.data)
         return showSnackbar.error(response.error || '评论失败');
       setComments((current) => [...current, response.data!.comment]);
@@ -153,7 +171,8 @@ const WritingDetail: React.FC = () => {
       const response = await writingInteractionsApi.addComment(
         id,
         replyContent,
-        replyTo.id
+        replyTo.id,
+        commentAnonymous
       );
       if (!response.success || !response.data)
         return showSnackbar.error(response.error || '回复失败');
@@ -192,38 +211,6 @@ const WritingDetail: React.FC = () => {
     setDeletingCommentId(null);
   };
 
-  const renderReplyEditor = (item: WritingComment) =>
-    replyTo?.id === item.id ? (
-      <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mt: 1 }}>
-        <TextField
-          fullWidth
-          autoFocus
-          multiline
-          minRows={2}
-          size="small"
-          value={replyContent}
-          onChange={(event) =>
-            setReplyContent(event.target.value.slice(0, 500))
-          }
-          placeholder={`回复 ${item.author.name}，分享你的感受……`}
-          helperText={`${replyContent.length}/500`}
-        />
-        <Stack>
-          <Button
-            variant="contained"
-            size="small"
-            onClick={handleReply}
-            disabled={!replyContent.trim() || submitting}
-          >
-            {submitting ? '发送中…' : '发送'}
-          </Button>
-          <Button size="small" onClick={() => setReplyTo(null)}>
-            取消
-          </Button>
-        </Stack>
-      </Stack>
-    ) : null;
-
   const getDescendants = (parentId: string): WritingComment[] => {
     const direct = comments.filter((item) => item.parent_id === parentId);
     return direct.flatMap((item) => [item, ...getDescendants(item.id)]);
@@ -233,6 +220,7 @@ const WritingDetail: React.FC = () => {
     if (!requireLogin()) return;
     setReplyTo(item);
     setReplyContent('');
+    window.setTimeout(() => interactionInputRef.current?.focus(), 0);
   };
 
   const renderComment = (item: WritingComment): React.ReactNode => {
@@ -301,7 +289,6 @@ const WritingDetail: React.FC = () => {
               </Button>
             )}
           </Stack>
-          {renderReplyEditor(item)}
           {replies.length > 0 && (
             <Box
               sx={{
@@ -375,7 +362,6 @@ const WritingDetail: React.FC = () => {
                         </Button>
                       )}
                     </Stack>
-                    {renderReplyEditor(reply)}
                   </Box>
                 );
               })}
@@ -389,7 +375,15 @@ const WritingDetail: React.FC = () => {
   if (loading) return <Loading message="正在打开这篇书写..." />;
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f7f5f2', py: { xs: 3, md: 6 } }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: '#f7f5f2',
+        pt: { xs: 3, md: 6 },
+        pb:
+          post?.visibility === 'public' ? { xs: 17, sm: 15 } : { xs: 3, md: 6 },
+      }}
+    >
       <Container maxWidth="md">
         <Button
           startIcon={<ArrowBackIcon />}
@@ -429,7 +423,15 @@ const WritingDetail: React.FC = () => {
                       />
                     )}
                   </Box>
-                  <Typography variant="h3" component="h1" fontWeight={800}>
+                  <Typography
+                    variant="h4"
+                    component="h1"
+                    fontWeight={750}
+                    sx={{
+                      fontSize: { xs: '1.65rem', sm: '2rem' },
+                      lineHeight: 1.35,
+                    }}
+                  >
                     <HighlightedText
                       text={
                         post.title ||
@@ -439,7 +441,7 @@ const WritingDetail: React.FC = () => {
                     />
                   </Typography>
                   <Typography color="text.secondary" sx={{ mt: 1 }}>
-                    {post.author.name} · {formatDate(post.created_at)}
+                    {post.author.name} · {formatLocalDateTime(post.created_at)}
                   </Typography>
                 </Box>
 
@@ -467,65 +469,12 @@ const WritingDetail: React.FC = () => {
                 )}
               </Stack>
 
-              {post.image_urls.length > 0 && (
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: {
-                      xs: '1fr',
-                      sm:
-                        post.image_urls.length === 1
-                          ? '1fr'
-                          : 'repeat(2, minmax(0, 1fr))',
-                    },
-                    gap: 2,
-                  }}
-                >
-                  {post.image_urls.map((imageUrl) => (
-                    <Box
-                      key={imageUrl}
-                      component="a"
-                      href={imageUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Box
-                        component="img"
-                        src={imageUrl}
-                        alt={post.title || '书写配图'}
-                        sx={{
-                          display: 'block',
-                          width: '100%',
-                          maxHeight: 520,
-                          objectFit: 'cover',
-                          borderRadius: 3,
-                        }}
-                      />
-                    </Box>
-                  ))}
-                </Box>
-              )}
-
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {post.topics.map((topic) => (
-                  <Chip
-                    key={topic.id}
-                    label={topic.name}
-                    color={topic.is_user_created ? 'secondary' : 'default'}
-                    variant={topic.is_user_created ? 'filled' : 'outlined'}
-                  />
-                ))}
-              </Box>
-
               {post.template_snapshot?.items.some((item) =>
                 item.answer.trim()
               ) && (
                 <>
                   <Divider />
                   <Box>
-                    <Typography variant="h5" fontWeight={700} sx={{ mb: 3 }}>
-                      模板观察
-                    </Typography>
                     <Stack spacing={3}>
                       {post.template_snapshot.items
                         .filter((item) => item.answer.trim())
@@ -555,9 +504,6 @@ const WritingDetail: React.FC = () => {
                 <>
                   <Divider />
                   <Box>
-                    <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
-                      正文
-                    </Typography>
                     <Typography sx={{ whiteSpace: 'pre-wrap', lineHeight: 2 }}>
                       <HighlightedText text={post.body} />
                     </Typography>
@@ -565,50 +511,76 @@ const WritingDetail: React.FC = () => {
                 </>
               )}
 
+              {post.image_urls.length > 0 && (
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns:
+                      post.image_urls.length === 1
+                        ? 'minmax(0, 440px)'
+                        : 'repeat(3, minmax(0, 1fr))',
+                    gap: { xs: 0.75, sm: 1 },
+                    maxWidth: post.image_urls.length === 1 ? 440 : 620,
+                  }}
+                >
+                  {post.image_urls.map((imageUrl, index) => (
+                    <Box
+                      key={imageUrl}
+                      component="button"
+                      type="button"
+                      onClick={() => setPreviewImage(imageUrl)}
+                      aria-label={`查看第 ${index + 1} 张配图`}
+                      sx={{
+                        display: 'block',
+                        border: 0,
+                        p: 0,
+                        bgcolor: '#f3f1ee',
+                        cursor: 'zoom-in',
+                        overflow: 'hidden',
+                        borderRadius: 1.5,
+                        aspectRatio:
+                          post.image_urls.length === 1 ? '4 / 3' : '1 / 1',
+                        '&:focus-visible': {
+                          outline: '3px solid',
+                          outlineColor: 'primary.light',
+                          outlineOffset: 2,
+                        },
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={imageUrl}
+                        alt={post.title || '书写配图'}
+                        loading="lazy"
+                        sx={{
+                          display: 'block',
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          transition: 'transform 0.2s ease',
+                          '&:hover': { transform: 'scale(1.02)' },
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
+              {post.topics.length > 0 && (
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {post.topics.map((topic) => (
+                    <TopicChip key={topic.id} topic={topic} />
+                  ))}
+                </Box>
+              )}
+
               {post.visibility === 'public' && (
                 <>
                   <Divider />
                   <Box>
-                    <Button
-                      onClick={handleResonance}
-                      color={post.has_resonated ? 'error' : 'primary'}
-                      disabled={resonanceLoading || interactionLoading}
-                    >
-                      {resonanceLoading
-                        ? '处理中…'
-                        : post.has_resonated
-                          ? '已共鸣'
-                          : '共鸣'}{' '}
-                      · {post.resonance_count}
-                    </Button>
-                  </Box>
-                  <Box>
-                    <Typography variant="h5" fontWeight={700}>
-                      感受回应
-                    </Typography>
                     <Alert severity="info" sx={{ my: 2 }}>
-                      分享这篇书写带给你的个人感受即可。请不评价作者，也不提供建议或指导。
+                      欢迎分享这篇书写带给你的触动。不要评价作者，也不必提供建议或解决方案。我们只是在这里各自停留，彼此看见。
                     </Alert>
-                    <Stack direction="row" spacing={1} alignItems="flex-start">
-                      <TextField
-                        fullWidth
-                        multiline
-                        minRows={2}
-                        value={comment}
-                        onChange={(event) =>
-                          setComment(event.target.value.slice(0, 500))
-                        }
-                        placeholder="例如：读到这里，我也想起了……"
-                        helperText={`${comment.length}/500`}
-                      />
-                      <Button
-                        variant="contained"
-                        onClick={handleComment}
-                        disabled={!comment.trim() || submitting}
-                      >
-                        {submitting ? '发送中…' : '发送'}
-                      </Button>
-                    </Stack>
                     {interactionLoading ? (
                       <Stack
                         direction="row"
@@ -636,6 +608,207 @@ const WritingDetail: React.FC = () => {
           </Paper>
         )}
       </Container>
+      {post?.visibility === 'public' && (
+        <Paper
+          square
+          elevation={10}
+          sx={{
+            position: 'fixed',
+            zIndex: (theme) => theme.zIndex.appBar,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'rgba(255, 255, 255, 0.97)',
+            backdropFilter: 'blur(12px)',
+            pb: 'env(safe-area-inset-bottom)',
+          }}
+        >
+          <Container maxWidth="md" sx={{ py: 1.25 }}>
+            {replyTo && (
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ mb: 0.75, pl: { sm: 14 } }}
+              >
+                <Typography variant="caption" color="text.secondary">
+                  正在回复 {replyTo.author.name}
+                </Typography>
+                <Button
+                  size="small"
+                  color="inherit"
+                  onClick={() => {
+                    setReplyTo(null);
+                    setReplyContent('');
+                  }}
+                  sx={{ minWidth: 0, color: 'text.secondary' }}
+                >
+                  取消
+                </Button>
+              </Stack>
+            )}
+            <Stack direction="row" spacing={1} alignItems="flex-end">
+              <Button
+                onClick={handleResonance}
+                aria-label={`${post.has_resonated ? '取消共鸣' : '共鸣'}，当前 ${post.resonance_count} 次`}
+                startIcon={
+                  post.has_resonated ? (
+                    <TipsAndUpdatesIcon />
+                  ) : (
+                    <TipsAndUpdatesOutlinedIcon />
+                  )
+                }
+                variant={post.has_resonated ? 'contained' : 'outlined'}
+                disabled={resonanceLoading || interactionLoading}
+                sx={{
+                  minWidth: 64,
+                  height: 40,
+                  borderRadius: 1.5,
+                  px: { xs: 1, sm: 2 },
+                  borderColor: '#c58b2a',
+                  borderWidth: post.has_resonated ? 2 : 1,
+                  bgcolor: post.has_resonated ? '#c58b2a' : 'transparent',
+                  color: post.has_resonated ? '#fff' : '#95691f',
+                  '& .MuiButton-startIcon': { mr: 0.5 },
+                  '&:hover': {
+                    borderColor: '#a8731e',
+                    bgcolor: post.has_resonated ? '#a8731e' : '#fff8e8',
+                  },
+                }}
+              >
+                {resonanceLoading ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : (
+                  post.resonance_count
+                )}
+              </Button>
+              <TextField
+                fullWidth
+                inputRef={interactionInputRef}
+                size="small"
+                multiline
+                maxRows={3}
+                value={replyTo ? replyContent : comment}
+                onChange={(event) => {
+                  const value = event.target.value.slice(0, 500);
+                  if (replyTo) setReplyContent(value);
+                  else setComment(value);
+                }}
+                placeholder={
+                  replyTo ? `回复 ${replyTo.author.name}…` : '写你的回应…'
+                }
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <ChatBubbleOutlineIcon
+                        color="action"
+                        sx={{ mr: 1, fontSize: 19, alignSelf: 'center' }}
+                      />
+                    ),
+                  },
+                }}
+              />
+              <Tooltip
+                title={commentAnonymous ? '取消匿名评论' : '使用佚名评论'}
+              >
+                <IconButton
+                  aria-label={
+                    commentAnonymous ? '取消匿名评论' : '使用佚名评论'
+                  }
+                  aria-pressed={commentAnonymous}
+                  onClick={() => setCommentAnonymous((value) => !value)}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    flexShrink: 0,
+                    borderRadius: 1.5,
+                    border: '1px solid',
+                    borderColor: commentAnonymous ? '#e87545' : 'divider',
+                    bgcolor: commentAnonymous ? '#e87545' : 'transparent',
+                    color: commentAnonymous ? '#fff' : 'text.secondary',
+                    '&:hover': {
+                      bgcolor: commentAnonymous ? '#cf6034' : 'action.hover',
+                    },
+                  }}
+                >
+                  <PersonOffOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <IconButton
+                color="primary"
+                onClick={replyTo ? handleReply : handleComment}
+                disabled={
+                  !(replyTo ? replyContent : comment).trim() || submitting
+                }
+                aria-label={
+                  replyTo ? `发送给 ${replyTo.author.name}` : '发送评论'
+                }
+                sx={{
+                  width: 40,
+                  height: 40,
+                  flexShrink: 0,
+                  borderRadius: 1.5,
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  '&:hover': { bgcolor: 'primary.dark' },
+                  '&.Mui-disabled': {
+                    bgcolor: 'action.disabledBackground',
+                    color: 'action.disabled',
+                  },
+                }}
+              >
+                {submitting ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  <SendRoundedIcon fontSize="small" />
+                )}
+              </IconButton>
+            </Stack>
+          </Container>
+        </Paper>
+      )}
+      <Dialog
+        open={Boolean(previewImage)}
+        onClose={() => setPreviewImage('')}
+        maxWidth={false}
+        slotProps={{
+          paper: {
+            sx: {
+              m: { xs: 1, sm: 3 },
+              bgcolor: 'transparent',
+              boxShadow: 'none',
+              overflow: 'visible',
+            },
+          },
+          backdrop: { sx: { bgcolor: 'rgba(0, 0, 0, 0.88)' } },
+        }}
+      >
+        <IconButton
+          aria-label="关闭图片预览"
+          onClick={() => setPreviewImage('')}
+          sx={{
+            position: 'absolute',
+            right: 0,
+            top: -48,
+            color: '#fff',
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+        <Box
+          component="img"
+          src={previewImage}
+          alt="书写配图预览"
+          sx={{
+            display: 'block',
+            maxWidth: 'min(94vw, 1200px)',
+            maxHeight: '88vh',
+            objectFit: 'contain',
+          }}
+        />
+      </Dialog>
     </Box>
   );
 };

@@ -13,6 +13,7 @@ export const WRITING_POST_SELECT = `
   image_urls,
   template_id,
   template_snapshot,
+  is_anonymous,
   visibility,
   status,
   created_at,
@@ -75,10 +76,13 @@ export function mapWritingPost(
 ): WritingPost {
   const author = Array.isArray(row.author) ? row.author[0] : row.author;
   const topicLinks = Array.isArray(row.topic_links) ? row.topic_links : [];
+  const isOwner =
+    Boolean(currentUserId) && String(row.user_id) === String(currentUserId);
+  const isAnonymous = Boolean(row.is_anonymous);
 
   return {
     id: String(row.id),
-    user_id: String(row.user_id || ''),
+    user_id: isAnonymous && !isOwner ? '' : String(row.user_id || ''),
     title: row.title || null,
     body: row.body || '',
     image_urls: Array.isArray(row.image_urls)
@@ -92,16 +96,23 @@ export function mapWritingPost(
       .map(mapWritingTopic)
       .sort((a: WritingTopic, b: WritingTopic) => a.sort_order - b.sort_order),
     author: {
-      id: author?.id ? String(author.id) : String(row.user_id || ''),
-      name: author?.name || author?.username || '匿名用户',
-      username: author?.username || null,
+      id:
+        isAnonymous && !isOwner
+          ? ''
+          : author?.id
+            ? String(author.id)
+            : String(row.user_id || ''),
+      name: isAnonymous
+        ? '匿名书写者'
+        : author?.name || author?.username || '匿名用户',
+      username: isAnonymous ? null : author?.username || null,
     },
+    is_anonymous: isAnonymous,
     visibility: row.visibility === 'public' ? 'public' : 'private',
     status: row.status === 'hidden' ? 'hidden' : 'published',
     created_at: row.created_at,
     updated_at: row.updated_at,
-    can_edit:
-      Boolean(currentUserId) && String(row.user_id) === String(currentUserId),
+    can_edit: isOwner,
     resonance_count: Number(row.resonance_count) || 0,
     has_resonated: Boolean(row.has_resonated),
     comment_count: Number(row.comment_count) || 0,

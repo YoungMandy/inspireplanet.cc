@@ -55,6 +55,7 @@ export interface WritingPost {
   template_snapshot?: WritingTemplateSnapshot | null;
   topics: WritingTopic[];
   author: WritingAuthor;
+  is_anonymous: boolean;
   visibility: WritingVisibility;
   status: WritingStatus;
   created_at: string;
@@ -72,6 +73,7 @@ export interface WritingComment {
   parent_id?: string | null;
   content: string;
   author: WritingAuthor;
+  is_anonymous: boolean;
   created_at: string;
   can_delete: boolean;
 }
@@ -98,6 +100,7 @@ export interface CreateWritingRequest {
   template_answers?: WritingAnswerInput[];
   topic_ids?: string[];
   visibility: WritingVisibility;
+  is_anonymous?: boolean;
 }
 
 export type UpdateWritingRequest = CreateWritingRequest;
@@ -108,6 +111,8 @@ export interface WritingListParams {
   sort?: 'latest' | 'oldest';
   page?: number;
   page_size?: number;
+  date?: string;
+  timezone_offset?: number;
 }
 
 export interface WritingListResponse {

@@ -14,14 +14,11 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text }) => (
           component="span"
           key={`${token.text}-${index}`}
           sx={{
-            color: 'primary.main',
-            bgcolor: 'rgba(25, 118, 210, 0.1)',
-            borderRadius: 1,
-            px: 0.35,
-            fontWeight: 700,
+            color: '#a34f3b',
+            fontWeight: 650,
           }}
         >
-          {token.text.slice(1)}
+          {token.text}
         </Box>
       ) : (
         <React.Fragment key={`text-${index}`}>{token.text}</React.Fragment>

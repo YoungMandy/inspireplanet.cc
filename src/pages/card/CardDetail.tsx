@@ -16,7 +16,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Chip,
 } from '@mui/material';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import useResponsive from '@/hooks/useResponsive';
 import { CardItem, Comment } from '../../netlify/types';
 import { cardsApi, commentsApi } from '../../netlify/config';
@@ -84,6 +86,7 @@ const CardDetail: React.FC = () => {
 
       setCard(normalizedCard);
       checkDeletePermission(normalizedCard);
+      fetchComments(cardId);
     } catch (error) {
       console.error('获取卡片失败:', error);
       const text = '获取卡片失败';
@@ -159,7 +162,6 @@ const CardDetail: React.FC = () => {
       }
 
       fetchCardById(cardId);
-      fetchComments(cardId);
     };
     initPage();
   }, [location.search]);
@@ -428,6 +430,14 @@ const CardDetail: React.FC = () => {
                   }}
                 >
                   <Box sx={{ mb: 3 }}>
+                    {card?.is_private && (
+                      <Chip
+                        icon={<LockOutlinedIcon />}
+                        label="仅自己可见"
+                        size="small"
+                        sx={{ mb: 2, bgcolor: 'rgba(255,255,255,0.72)' }}
+                      />
+                    )}
                     <Typography
                       variant={isMobile ? 'h5' : 'h4'}
                       component="h1"
