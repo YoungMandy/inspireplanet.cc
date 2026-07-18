@@ -35,6 +35,18 @@ const normalizeUrl = (value: string) => {
   return `${siteOrigin}/${trimmed.replace(/^\/+/, '')}`;
 };
 
+const wrapTextForExport = (element: HTMLElement) => {
+  const text = element.textContent || '';
+  element.textContent = '';
+
+  Array.from(text).forEach((character) => {
+    const span = document.createElement('span');
+    span.style.display = 'inline';
+    span.textContent = character;
+    element.appendChild(span);
+  });
+};
+
 const DialoguePoster: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initial = {
@@ -62,12 +74,73 @@ const DialoguePoster: React.FC = () => {
   const downloadPoster = async () => {
     if (!posterRef.current) return;
     setDownloading(true);
+    let exportPoster: HTMLDivElement | null = null;
     try {
-      const canvas = await html2canvas(posterRef.current, {
+      await document.fonts?.ready;
+
+      exportPoster = posterRef.current.cloneNode(true) as HTMLDivElement;
+      Object.assign(exportPoster.style, {
+        position: 'fixed',
+        top: '0',
+        left: '-10000px',
+        width: '720px',
+        gap: '30px',
+        padding: '24px 64px',
+        boxShadow: 'none',
+      });
+
+      const exportEyebrow = exportPoster.querySelector(
+        '[data-poster-eyebrow]',
+      ) as HTMLElement | null;
+      const exportTitle = exportPoster.querySelector(
+        '[data-poster-title]',
+      ) as HTMLElement | null;
+      const exportDescription = exportPoster.querySelector(
+        '[data-poster-description]',
+      ) as HTMLElement | null;
+      const exportQrLabel = exportPoster.querySelector(
+        '[data-poster-qr-label]',
+      ) as HTMLElement | null;
+      const exportQr = exportPoster.querySelector('.poster-export-qr');
+
+      if (exportEyebrow) {
+        exportEyebrow.style.fontSize = '18px';
+        exportEyebrow.style.lineHeight = '26px';
+      }
+      if (exportTitle) {
+        exportTitle.style.margin = '28px 0 18px';
+        exportTitle.style.fontSize = '65px';
+        exportTitle.style.lineHeight = '73px';
+      }
+      if (exportDescription) {
+        exportDescription.style.fontSize = '23px';
+        exportDescription.style.lineHeight = '39px';
+      }
+      if (exportQr instanceof SVGElement) {
+        exportQr.style.width = '172px';
+        exportQr.style.height = '172px';
+      }
+      if (exportQrLabel) {
+        exportQrLabel.style.fontSize = '13px';
+        exportQrLabel.style.lineHeight = '18px';
+      }
+
+      [exportEyebrow, exportTitle, exportDescription, exportQrLabel].forEach(
+        (element) => element && wrapTextForExport(element),
+      );
+
+      document.body.appendChild(exportPoster);
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+
+      const canvas = await html2canvas(exportPoster, {
         scale: 2,
         backgroundColor: '#f7f1e8',
         useCORS: true,
         logging: false,
+        width: 720,
+        windowWidth: 720,
       });
       const link = document.createElement('a');
       const safeTitle = title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '-');
@@ -75,6 +148,7 @@ const DialoguePoster: React.FC = () => {
       link.href = canvas.toDataURL('image/png');
       link.click();
     } finally {
+      exportPoster?.remove();
       setDownloading(false);
     }
   };
@@ -104,9 +178,11 @@ const DialoguePoster: React.FC = () => {
         <div className={styles.poster} ref={posterRef}>
           <div className={styles.orbit} aria-hidden="true" />
           <div className={styles.posterTop}>
-            <span>启发星球 · {label || '页面分享'}</span>
-            <strong>{title || '页面标题'}</strong>
-            <p>{description || '用一句话告诉大家这个页面是做什么的。'}</p>
+            <span data-poster-eyebrow>启发星球 · {label || '页面分享'}</span>
+            <strong data-poster-title>{title || '页面标题'}</strong>
+            <p data-poster-description>
+              {description || '用一句话告诉大家这个页面是做什么的。'}
+            </p>
           </div>
 
           <div className={styles.posterBottom}>
@@ -118,8 +194,11 @@ const DialoguePoster: React.FC = () => {
                 bgColor="#fffdf9"
                 fgColor="#273a36"
                 marginSize={2}
+                className="poster-export-qr"
               />
-              <span>扫码进入：{label || '启发星球页面'}</span>
+              <span data-poster-qr-label>
+                扫码进入：{label || '启发星球页面'}
+              </span>
             </div>
           </div>
         </div>
