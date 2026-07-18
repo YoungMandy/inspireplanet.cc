@@ -21,3 +21,8 @@ export { default as episodesApi } from '../services/episodes';
 export { default as speakerSignupsApi } from '../services/speakerSignups';
 export { default as communityQrApi } from '../services/communityQr';
 export { default as submissionsApi } from '../services/submissions';
+export { default as writingsApi } from '../services/writings';
+export { default as writingTopicsApi } from '../services/writingTopics';
+export { default as writingTemplatesApi } from '../services/writingTemplates';
+export { default as writingInteractionsApi } from '../services/writingInteractions';
+export { default as writingAdminApi } from '../services/writingAdmin';

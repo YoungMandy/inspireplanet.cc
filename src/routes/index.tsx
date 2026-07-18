@@ -101,15 +101,11 @@ const Home = lazy(() => import('../pages/home/Home'));
 const About = lazy(() => import('../pages/introduce/About'));
 const Contact = lazy(() => import('../pages/introduce/Contact'));
 const Contribution = lazy(() => import('../pages/contribute/Contribution'));
-const ClarifyTogether = lazy(
-  () => import('../pages/dialogue/ClarifyTogether')
-);
+const ClarifyTogether = lazy(() => import('../pages/dialogue/ClarifyTogether'));
 const ParticipantSignup = lazy(
   () => import('../pages/dialogue/ParticipantSignup')
 );
-const DialoguePoster = lazy(
-  () => import('../pages/dialogue/DialoguePoster')
-);
+const DialoguePoster = lazy(() => import('../pages/dialogue/DialoguePoster'));
 const CommunityJoin = lazy(() => import('../pages/community/CommunityJoin'));
 const CommunityQrAdmin = lazy(
   () => import('../pages/community/CommunityQrAdmin')
@@ -152,6 +148,10 @@ const MeetupParticipants = lazy(
 const MeetupParticipantsList = lazy(
   () => import('../pages/activity/MeetupParticipantsList')
 );
+const WritingCircle = lazy(() => import('../pages/writing/WritingCircle'));
+const WritingEditor = lazy(() => import('../pages/writing/WritingEditor'));
+const WritingDetail = lazy(() => import('../pages/writing/WritingDetail'));
+const WritingAdmin = lazy(() => import('../pages/writing/WritingAdmin'));
 
 // 创建路由器
 const router = createBrowserRouter(
@@ -191,6 +191,14 @@ const router = createBrowserRouter(
         },
         { path: 'auth/callback', element: createLazyRoute(<AuthCallback />) },
         { path: 'cards', element: createLazyRoute(<Cards />) },
+        {
+          path: 'writing-circle',
+          element: createLazyRoute(<WritingCircle />),
+        },
+        {
+          path: 'writing-circle/:id',
+          element: createLazyRoute(<WritingDetail />),
+        },
         { path: 'meetups', element: createLazyRoute(<Meetups />) },
         { path: 'people', element: createLazyRoute(<PeopleDirectory />) },
         { path: 'weekly-cards', element: createLazyRoute(<WeeklyCards />) },
@@ -219,6 +227,14 @@ const router = createBrowserRouter(
         { path: 'create-card', element: createProtectedRoute(<CreateCard />) },
         { path: 'my-cards', element: createProtectedRoute(<MyCards />) },
         { path: 'card-edit/:id', element: createProtectedRoute(<CardEdit />) },
+        {
+          path: 'writing-circle/new',
+          element: createProtectedRoute(<WritingEditor />),
+        },
+        {
+          path: 'writing-circle/:id/edit',
+          element: createProtectedRoute(<WritingEditor />),
+        },
         { path: 'surveys', element: createProtectedRoute(<SurveyList />) },
         {
           path: 'survey-edit/:id',
@@ -270,6 +286,10 @@ const router = createBrowserRouter(
         {
           path: 'admin/community-qr',
           element: createOrganizerProtectedRoute(<CommunityQrAdmin />),
+        },
+        {
+          path: 'admin/writing-circle',
+          element: createOrganizerProtectedRoute(<WritingAdmin />),
         },
 
         // 404路由

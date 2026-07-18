@@ -5,6 +5,13 @@ import { supabase } from '../../database/supabase';
 
 export { getFunctionNameFromEvent, getDataFromEvent };
 
+export interface AuthenticatedUser {
+  id: string;
+  name: string;
+  username?: string | null;
+  role?: string | null;
+}
+
 /**
  * 从请求头中获取用户ID
  * @param event Netlify事件对象
@@ -24,21 +31,12 @@ export async function getUserIdFromAuth(event: any): Promise<string | null> {
       data: { user },
       error,
     } = await supabase.auth.getUser(token);
-    console.log('[auth] supabase.auth.getUser:', {
-      error: error?.message,
-      email: user?.email,
-    });
     if (!error && user?.email) {
       const { data: row } = await supabase
         .from('users')
         .select('id')
         .eq('email', user.email)
         .single();
-      console.log('[auth] users table lookup:', {
-        email: user.email,
-        found: !!row,
-        id: row?.id,
-      });
       if (row?.id) return String(row.id);
     }
   } catch (e) {
@@ -49,14 +47,33 @@ export async function getUserIdFromAuth(event: any): Promise<string | null> {
   try {
     const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
-    console.log(
-      '[auth] legacy JWT decoded userId:',
-      decoded.userId || decoded.user_id
-    );
     return decoded.userId || decoded.user_id || null;
   } catch {
     return null;
   }
+}
+
+export async function getAuthenticatedUser(
+  event: any
+): Promise<AuthenticatedUser | null> {
+  const userId = await getUserIdFromAuth(event);
+  if (!userId) return null;
+
+  const normalizedId = isNaN(Number(userId)) ? userId : Number(userId);
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, name, username, role')
+    .eq('id', normalizedId)
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    id: String(data.id),
+    name: data.name || data.username || '匿名用户',
+    username: data.username || null,
+    role: data.role || null,
+  };
 }
 
 /**

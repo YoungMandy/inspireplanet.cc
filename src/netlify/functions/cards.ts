@@ -85,6 +85,9 @@ export async function handler(
 async function handleCreate(event: NetlifyEvent): Promise<NetlifyResponse> {
   try {
     const cardData = getDataFromEvent(event) as CardItem;
+    const userId = await getUserIdFromAuth(event);
+
+    if (!userId) return createErrorResponse('未授权', 401);
 
     if (!cardData.title || !cardData.quote || !cardData.detail) {
       return createErrorResponse('缺少必填字段');
@@ -102,7 +105,8 @@ async function handleCreate(event: NetlifyEvent): Promise<NetlifyResponse> {
       gradient_class: cardData.gradient_class || '',
       username: cardData.username || null,
       likes_count: 0,
-      user_id: cardData.user_id || null,
+      user_id: userId,
+      is_private: Boolean(cardData.is_private),
       update_time: new Date().toDateString(),
     };
 
@@ -128,6 +132,8 @@ async function handleCreate(event: NetlifyEvent): Promise<NetlifyResponse> {
 
 async function handleGet(event: NetlifyEvent): Promise<NetlifyResponse> {
   try {
+    cache.allCards = null;
+    cache.cardsByIds = {};
     const requestData = getDataFromEvent(event);
     const id = requestData.id;
 
@@ -141,11 +147,7 @@ async function handleGet(event: NetlifyEvent): Promise<NetlifyResponse> {
       return createErrorResponse('缺少卡片ID');
     }
 
-    const cacheKey = String(id);
-    if (cache.cardsByIds[cacheKey]) {
-      const records = cache.cardsByIds[cacheKey];
-      return createSuccessResponse({ records, total: records.length });
-    }
+    const currentUserId = await getUserIdFromAuth(event);
 
     const { data, error } = await supabase
       .from('cards')
@@ -157,8 +159,12 @@ async function handleGet(event: NetlifyEvent): Promise<NetlifyResponse> {
       return createErrorResponse(error.message, 500);
     }
 
-    const records = (data || []).map((row: any) => row);
-    cache.cardsByIds[cacheKey] = records;
+    const records = (data || []).filter(
+      (row: any) =>
+        !row.is_private ||
+        (currentUserId && String(row.user_id) === String(currentUserId))
+    );
+    if (!records.length) return createErrorResponse('卡片不存在', 404);
 
     return createSuccessResponse({ records, total: records.length });
   } catch (error: any) {
@@ -169,6 +175,8 @@ async function handleGet(event: NetlifyEvent): Promise<NetlifyResponse> {
 
 async function handleGetAll(event: NetlifyEvent): Promise<NetlifyResponse> {
   try {
+    cache.allCards = null;
+    cache.cardsByIds = {};
     const requestData = getDataFromEvent(event);
     const userId = requestData.userId;
     const idParam = requestData.id;
@@ -177,6 +185,7 @@ async function handleGetAll(event: NetlifyEvent): Promise<NetlifyResponse> {
       ? parseInt(requestData.limit, 10)
       : null;
     const isPaginated = pageParam !== null && limitParam !== null;
+    const currentUserId = await getUserIdFromAuth(event);
 
     if (idParam) {
       // 检查是否是逗号分隔的ID列表
@@ -207,6 +216,12 @@ async function handleGetAll(event: NetlifyEvent): Promise<NetlifyResponse> {
     }
 
     let query = supabase.from('cards').select('*', { count: 'exact' });
+
+    query = currentUserId
+      ? query.or(
+          `is_private.eq.false,is_private.is.null,user_id.eq.${currentUserId}`
+        )
+      : query.or('is_private.eq.false,is_private.is.null');
 
     if (userId) {
       query = query.eq('user_id', userId);
@@ -274,6 +289,8 @@ async function handleGetAll(event: NetlifyEvent): Promise<NetlifyResponse> {
 async function handleUpdate(event: NetlifyEvent): Promise<NetlifyResponse> {
   try {
     const cardData = getDataFromEvent(event) as CardItem;
+    const currentUserId = await getUserIdFromAuth(event);
+    if (!currentUserId) return createErrorResponse('未授权', 401);
 
     if (
       !cardData.id ||
@@ -294,7 +311,7 @@ async function handleUpdate(event: NetlifyEvent): Promise<NetlifyResponse> {
       return createErrorResponse('卡片不存在', 404);
     }
 
-    if (cardData.user_id !== existingCard.user_id) {
+    if (String(currentUserId) !== String(existingCard.user_id)) {
       return createErrorResponse('没有权限修改此卡片', 403);
     }
 
@@ -309,6 +326,7 @@ async function handleUpdate(event: NetlifyEvent): Promise<NetlifyResponse> {
       upload: cardData.upload || existingCard.upload,
       username: cardData.username || existingCard.username,
       update_time: new Date().toDateString(),
+      is_private: Boolean(cardData.is_private),
     };
 
     const { data, error } = await supabase
@@ -390,11 +408,14 @@ async function handleLike(event: NetlifyEvent): Promise<NetlifyResponse> {
 
     const { data: card, error: fetchError } = await supabase
       .from('cards')
-      .select('id, likes_count')
+      .select('id, user_id, is_private, likes_count')
       .eq('id', card_id)
       .single();
 
     if (fetchError || !card) {
+      return createErrorResponse('卡片不存在', 404);
+    }
+    if (card.is_private && String(card.user_id) !== String(userId)) {
       return createErrorResponse('卡片不存在', 404);
     }
 

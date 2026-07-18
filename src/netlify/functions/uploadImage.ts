@@ -5,10 +5,12 @@ import {
   handleOptionsRequest,
   getFunctionNameFromEvent,
   getDataFromEvent,
+  getAuthenticatedUser,
 } from '../utils/server';
 
 export interface ImageUploadRequest {
   base64Image: string;
+  purpose?: 'writing' | 'general';
 }
 
 export interface ImageUploadResponse {
@@ -30,10 +32,7 @@ export interface UploadImageAction {
   functionName: 'upload';
 }
 
-export async function handler(
-  event: NetlifyEvent,
-  context: any
-): Promise<NetlifyResponse> {
+export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
   if (event.httpMethod === 'OPTIONS') {
     return handleOptionsRequest();
   }
@@ -55,6 +54,9 @@ export async function handler(
 
 async function handleUpload(event: NetlifyEvent): Promise<NetlifyResponse> {
   try {
+    const currentUser = await getAuthenticatedUser(event);
+    if (!currentUser) return createErrorResponse('未授权', 401);
+
     const requestBody = getDataFromEvent(event) as ImageUploadRequest;
     const base64Image: string = requestBody.base64Image;
 
@@ -62,9 +64,17 @@ async function handleUpload(event: NetlifyEvent): Promise<NetlifyResponse> {
       return createErrorResponse('缺少base64Image参数');
     }
 
-    const base64Data: string = base64Image.split(',')[1];
-    if (!base64Data) {
-      return createErrorResponse('无效的base64图片格式');
+    const imageMatch = base64Image.match(
+      /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/
+    );
+    if (!imageMatch)
+      return createErrorResponse('仅支持 PNG、JPEG 或 WebP 图片');
+
+    const imageType = imageMatch[1];
+    const base64Data = imageMatch[2];
+    const imageSize = Buffer.byteLength(base64Data, 'base64');
+    if (imageSize > 5 * 1024 * 1024) {
+      return createErrorResponse('图片不能超过 5MB');
     }
 
     const GITHUB_TOKEN: string = process.env.GITHUB_TOKEN as string;
@@ -84,7 +94,9 @@ async function handleUpload(event: NetlifyEvent): Promise<NetlifyResponse> {
 
     const timestamp: number = Date.now();
     const randomString: string = Math.random().toString(36).substring(2, 8);
-    const filename: string = `user_uploads/image_${timestamp}_${randomString}.png`;
+    const extension = imageType === 'jpeg' ? 'jpg' : imageType;
+    const folder = requestBody.purpose === 'writing' ? 'writing' : 'general';
+    const filename: string = `user_uploads/${folder}/user_${currentUser.id}_${timestamp}_${randomString}.${extension}`;
 
     const url: string = `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${filename}`;
 

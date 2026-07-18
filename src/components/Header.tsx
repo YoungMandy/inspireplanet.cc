@@ -24,6 +24,7 @@ import {
   CalendarToday,
   Info,
   Forum,
+  EditNote,
   AccountCircle,
   Logout,
   Lock,
@@ -72,6 +73,8 @@ const Header: React.FC<HeaderProps> = ({
   const [cardsMenuAnchor, setCardsMenuAnchor] = useState<HTMLElement | null>(
     null
   );
+  const [writingMenuAnchor, setWritingMenuAnchor] =
+    useState<HTMLElement | null>(null);
   const [unread, setUnread] = useState(0);
 
   // 路由和响应式
@@ -131,6 +134,13 @@ const Header: React.FC<HeaderProps> = ({
     },
   ];
 
+  const writingMenuItems: NavItem[] = [
+    { path: '/writing-circle', label: '进入圈子' },
+    ...(isOrganizer()
+      ? [{ path: '/admin/writing-circle', label: '圈子后台' }]
+      : []),
+  ];
+
   // 构建活动菜单，只对 organizer 显示报名管理
   const getActivitiesMenuItems = (): NavItem[] => {
     const baseItems: NavItem[] = [
@@ -160,6 +170,13 @@ const Header: React.FC<HeaderProps> = ({
 
   // 下拉菜单配置
   const dropdownMenus: DropdownMenu[] = [
+    {
+      label: '书写圈子',
+      icon: <EditNote fontSize="small" />,
+      items: writingMenuItems,
+      anchor: writingMenuAnchor,
+      setAnchor: setWritingMenuAnchor,
+    },
     {
       label: '活动',
       icon: <CalendarToday fontSize="small" />,
@@ -435,6 +452,11 @@ const Header: React.FC<HeaderProps> = ({
 
           {/* 移动端菜单组 */}
           {renderMobileMenuItemGroup(
+            '书写圈子',
+            <EditNote fontSize="small" />,
+            writingMenuItems
+          )}
+          {renderMobileMenuItemGroup(
             '活动',
             <CalendarToday fontSize="small" />,
             getActivitiesMenuItems()
@@ -591,6 +613,14 @@ const Header: React.FC<HeaderProps> = ({
                 >
                   <CardMembership fontSize="small" sx={{ mr: 1 }} />
                   我的卡片
+                </MenuItem>
+                <MenuItem
+                  component={Link}
+                  to="/writing-circle?scope=mine"
+                  onClick={() => setUserMenuAnchor(null)}
+                >
+                  <Forum fontSize="small" sx={{ mr: 1 }} />
+                  我的书写
                 </MenuItem>
                 <MenuItem
                   component={Link}

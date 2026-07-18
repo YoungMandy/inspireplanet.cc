@@ -38,6 +38,17 @@ export interface CommentAction {
   functionName: 'create' | 'getAll' | 'getByCardId';
 }
 
+async function canViewCard(cardId: string, userId?: string | null) {
+  const { data } = await supabase
+    .from('cards')
+    .select('user_id, is_private')
+    .eq('id', cardId)
+    .maybeSingle();
+  return Boolean(
+    data && (!data.is_private || String(data.user_id) === String(userId || ''))
+  );
+}
+
 export async function handler(
   event: NetlifyEvent,
   context: NetlifyContext
@@ -76,6 +87,9 @@ async function handleCreate(event: NetlifyEvent): Promise<NetlifyResponse> {
     const uid = await getUserIdFromAuth(event);
     if (!uid) {
       return createErrorResponse('未授权', 401);
+    }
+    if (!(await canViewCard(String(commentData.card_id), uid))) {
+      return createErrorResponse('卡片不存在', 404);
     }
 
     const sanitizedComment = sanitizeInput(commentData.comment || '', 500);
@@ -174,6 +188,10 @@ async function handleGetByCardId(
     if (!cardId) {
       return createErrorResponse('缺少card  d参数');
     }
+    const uid = await getUserIdFromAuth(event);
+    if (!(await canViewCard(String(cardId), uid))) {
+      return createErrorResponse('卡片不存在', 404);
+    }
 
     const { data, error } = await supabase
       .from('comments')
@@ -207,6 +225,10 @@ async function handleGetAll(event: NetlifyEvent): Promise<NetlifyResponse> {
 
     if (!card_id) {
       return createErrorResponse('缺少card_id参数');
+    }
+    const uid = await getUserIdFromAuth(event);
+    if (!(await canViewCard(String(card_id), uid))) {
+      return createErrorResponse('卡片不存在', 404);
     }
 
     const { data, error } = await supabase

@@ -1,6 +1,7 @@
 export * from './http';
 export * from './survey';
 export * from './rsvp';
+export * from './writing';
 
 // 卡片数据接口 - 统一所有卡片相关的类型
 export interface CardItem {
@@ -18,6 +19,7 @@ export interface CardItem {
   username?: string;
   likes_count?: number;
   update_time?: number;
+  is_private?: boolean;
 }
 
 // 评论数据接口
