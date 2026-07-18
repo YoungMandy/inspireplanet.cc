@@ -224,22 +224,6 @@ const WritingCircle: React.FC = () => {
           }}
         >
           <Stack spacing={2.5}>
-            <TextField
-              fullWidth
-              size="small"
-              value={topicQuery}
-              onChange={(event) => setTopicQuery(event.target.value)}
-              placeholder="按书写话题名称搜索"
-              aria-label="搜索话题"
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <SearchIcon color="action" sx={{ mr: 1, fontSize: 20 }} />
-                  ),
-                },
-              }}
-              sx={{ display: { xs: 'flex', sm: 'none' } }}
-            />
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               justifyContent="space-between"
@@ -322,7 +306,7 @@ const WritingCircle: React.FC = () => {
                   },
                 }}
                 sx={{
-                  display: { xs: 'none', sm: 'flex' },
+                  display: { xs: 'flex', sm: 'flex' },
                   mb: 2,
                   maxWidth: 420,
                 }}
