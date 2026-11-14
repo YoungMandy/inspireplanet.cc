@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -217,6 +217,42 @@ const WritingEditor: React.FC = () => {
       active = false;
     };
   }, [id]);
+
+  const bodyInput = useRef<HTMLTextAreaElement>(null);
+  const [bodyRevision, setBodyRevision] = useState(0);
+
+  const appendTemplate = (template: WritingTemplate) => {
+    const section = [template.name, ...template.prompts.map(({ prompt }) => prompt)]
+      .join('\n\n');
+    const separator = !body || body.endsWith('\n\n')
+      ? ''
+      : body.endsWith('\n') ? '\n' : '\n\n';
+    const nextBody = body + separator + section + '\n\n';
+    if (nextBody.length > 20000) {
+      showSnackbar.warning('添加模板后正文会超过 20000 个字');
+      return;
+    }
+
+    if (editorMode === 'rich') {
+      const current = richBody || plainTextToRichContent(body);
+      const paragraphs = [...(current.content || [])];
+      const lastParagraph = paragraphs[paragraphs.length - 1];
+      if (lastParagraph?.type === 'paragraph' && !lastParagraph.content?.length) {
+        paragraphs.pop();
+      }
+      setRichBody({
+        ...current,
+        content: [...paragraphs, ...(plainTextToRichContent(section + '\n').content || [])],
+      });
+      setBodyRevision((revision) => revision + 1);
+    } else {
+      requestAnimationFrame(() => {
+        bodyInput.current?.focus();
+        bodyInput.current?.setSelectionRange(nextBody.length, nextBody.length);
+      });
+    }
+    setBody(nextBody);
+  };
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === templateId),
@@ -446,43 +482,45 @@ const WritingEditor: React.FC = () => {
                 <CharacterCount current={title.length} max={80} />
               </Box>
 
-              <FormControl fullWidth>
-                <InputLabel id="writing-template-label">
-                  书写模板（可选）
-                </InputLabel>
-                <Select
-                  labelId="writing-template-label"
-                  label="书写模板（可选）"
-                  value={templateId}
-                  onChange={(event) =>
-                    handleTemplateChange(String(event.target.value))
-                  }
-                >
-                  <MenuItem value="">自由书写</MenuItem>
-                  {templateId &&
-                    !selectedTemplate &&
-                    historicalTemplateName && (
-                      <MenuItem value={templateId}>
-                        {historicalTemplateName}
-                      </MenuItem>
-                    )}
-                  {templates.map((template) => (
-                    <MenuItem key={template.id} value={template.id}>
-                      {template.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {(selectedTemplate?.description || historicalTemplateName) && (
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ mt: 1 }}
+              {templateId && (
+                <FormControl fullWidth>
+                  <InputLabel id="writing-template-label">
+                    书写模板（可选）
+                  </InputLabel>
+                  <Select
+                    labelId="writing-template-label"
+                    label="书写模板（可选）"
+                    value={templateId}
+                    onChange={(event) =>
+                      handleTemplateChange(String(event.target.value))
+                    }
                   >
-                    {selectedTemplate?.description ||
-                      '使用发布时保存的历史模板'}
-                  </Typography>
-                )}
-              </FormControl>
+                    <MenuItem value="">自由书写</MenuItem>
+                    {templateId &&
+                      !selectedTemplate &&
+                      historicalTemplateName && (
+                        <MenuItem value={templateId}>
+                          {historicalTemplateName}
+                        </MenuItem>
+                      )}
+                    {templates.map((template) => (
+                      <MenuItem key={template.id} value={template.id}>
+                        {template.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {(selectedTemplate?.description || historicalTemplateName) && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      {selectedTemplate?.description ||
+                        '使用发布时保存的历史模板'}
+                    </Typography>
+                  )}
+                </FormControl>
+              )}
 
               {promptFields.length > 0 && (
                 <Box>
@@ -550,6 +588,8 @@ const WritingEditor: React.FC = () => {
                 </Stack>
                 {editorMode === 'rich' ? (
                   <RichTextEditor
+                    key={bodyRevision}
+                    focusAtEnd={bodyRevision > 0}
                     content={richBody || plainTextToRichContent(body)}
                     onChange={(content, plainText) => {
                       setRichBody(content);
@@ -559,6 +599,7 @@ const WritingEditor: React.FC = () => {
                 ) : (
                   <Box sx={{ position: 'relative' }}>
                     <TextField
+                      inputRef={bodyInput}
                       label="正文"
                       placeholder="自由地写下观察；输入 #话题 可以创建自己的话题。"
                       value={body}
@@ -570,6 +611,25 @@ const WritingEditor: React.FC = () => {
                     />
                     <CharacterCount current={body.length} max={20000} />
                   </Box>
+                )}
+                {templates.length > 0 && (
+                  <TextField
+                    select
+                    size="small"
+                    label="添加模板"
+                    value=""
+                    onChange={(event) => {
+                      const template = templates.find(({ id }) => id === event.target.value);
+                      if (template) appendTemplate(template);
+                    }}
+                    sx={{ mt: 1.5, minWidth: 160 }}
+                  >
+                    {templates.map((template) => (
+                      <MenuItem key={template.id} value={template.id}>
+                        {template.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                 )}
                 <Typography
                   variant="caption"

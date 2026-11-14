@@ -37,6 +37,7 @@ import styles from '../rich-text/richText.module.css';
 interface Props {
   content: WritingRichContent;
   maxLength?: number;
+  focusAtEnd?: boolean;
   onChange: (content: WritingRichContent, plainText: string) => void;
 }
 
@@ -52,6 +53,7 @@ const HIGHLIGHT_COLORS = [
 const RichTextEditor: React.FC<Props> = ({
   content,
   maxLength = 20000,
+  focusAtEnd = false,
   onChange,
 }) => {
   const [, setRevision] = useState(0);
@@ -62,6 +64,7 @@ const RichTextEditor: React.FC<Props> = ({
   const editor = useEditor({
     extensions: createRichTextExtensions(),
     content,
+    autofocus: focusAtEnd ? 'end' : false,
     editorProps: {
       attributes: {
         class: styles.editor,

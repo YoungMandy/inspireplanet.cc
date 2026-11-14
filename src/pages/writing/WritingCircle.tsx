@@ -1,4 +1,3 @@
-import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Link as RouterLink,
