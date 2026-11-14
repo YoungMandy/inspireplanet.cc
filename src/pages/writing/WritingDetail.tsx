@@ -975,6 +975,7 @@ const WritingDetail: React.FC = () => {
               (post.editor_mode === 'rich' && displayedBody ? (
                 <RichTextRenderer
                   content={displayedBody}
+                  downloadTextBlocks
                   sx={{
                     ...sectionDividerStyle,
                     maxWidth: 'none',
