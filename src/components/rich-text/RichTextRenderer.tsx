@@ -10,12 +10,14 @@ import styles from './richText.module.css';
 interface RichTextRendererProps {
   content: WritingRichContent;
   className?: string;
+  downloadTextBlocks?: boolean;
   sx?: SxProps<Theme>;
 }
 
 const RichTextRenderer: React.FC<RichTextRendererProps> = ({
   content,
   className,
+  downloadTextBlocks,
   sx,
 }) => {
   const html = useMemo(
@@ -27,6 +29,7 @@ const RichTextRenderer: React.FC<RichTextRendererProps> = ({
     <Box
       className={[styles.rendered, className].filter(Boolean).join(' ')}
       sx={sx}
+      data-download-text-blocks={downloadTextBlocks || undefined}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

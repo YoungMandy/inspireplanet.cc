@@ -45,6 +45,10 @@ function rasterizeTextElement(element: HTMLElement): void {
   if (!text) return;
 
   const style = window.getComputedStyle(element);
+  const inline = element.firstElementChild;
+  const fontStyle = inline?.matches('strong, b')
+    ? window.getComputedStyle(inline)
+    : style;
   const width = element.clientWidth;
   const fontSize = Number.parseFloat(style.fontSize) || 16;
   const lineHeight = Number.parseFloat(style.lineHeight) || fontSize * 1.5;
@@ -53,7 +57,7 @@ function rasterizeTextElement(element: HTMLElement): void {
   const measureCanvas = document.createElement('canvas');
   const measureContext = measureCanvas.getContext('2d');
   if (!measureContext) return;
-  measureContext.font = style.font;
+  measureContext.font = fontStyle.font;
 
   const lines: string[] = [];
   text.split('\n').forEach((paragraph) => {
@@ -82,7 +86,7 @@ function rasterizeTextElement(element: HTMLElement): void {
   const context = canvas.getContext('2d');
   if (!context) return;
   context.scale(scale, scale);
-  context.font = style.font;
+  context.font = fontStyle.font;
   context.fillStyle = style.color;
   context.textBaseline = 'top';
   context.textAlign = style.textAlign === 'center' ? 'center' : 'left';
@@ -398,8 +402,23 @@ export async function downloadCard(
 
     if (rasterizeText) {
       clone
-        .querySelectorAll<HTMLElement>('[data-download-text]')
-        .forEach(rasterizeTextElement);
+        .querySelectorAll<HTMLElement>(
+          '[data-download-text], [data-download-text-blocks] > p'
+        )
+        .forEach((element) => {
+          // Preserve mixed inline formatting in rich paragraphs.
+          if (
+            !element.hasAttribute('data-download-text') &&
+            element.childElementCount > 0 &&
+            !(
+              element.childNodes.length === 1 &&
+              element.firstElementChild?.matches('strong, b') &&
+              !element.firstElementChild.childElementCount
+            )
+          )
+            return;
+          rasterizeTextElement(element);
+        });
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => resolve())
       );
