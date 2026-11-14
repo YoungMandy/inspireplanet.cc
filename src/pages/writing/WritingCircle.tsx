@@ -709,22 +709,12 @@ const WritingCircle: React.FC = () => {
                   },
                 }}
               >
-                {isAuthenticated && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={isDesktop ? <MenuBookOutlinedIcon /> : undefined}
-                    onClick={() => navigate('/my-ebook')}
-                  >
-                    我的电子书
-                  </Button>
-                )}
                 <Button
                   component={RouterLink}
                   to="/my-ebook"
                   size="small"
                   variant="outlined"
-                  startIcon={<MenuBookOutlinedIcon />}
+                  startIcon={isDesktop ? <MenuBookOutlinedIcon /> : undefined}
                 >
                   我的电子书
                 </Button>
