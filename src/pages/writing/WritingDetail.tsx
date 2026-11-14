@@ -1,3 +1,4 @@
+import { plainTextToRichContent } from '../../components/rich-text/config';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -530,6 +531,65 @@ const WritingDetail: React.FC = () => {
     );
   }
 
+  const stored = post.body_rich?.writingSections as
+    | {
+        sections?: Array<{
+          kind: string;
+          text?: string;
+          template?: { prompts?: Array<{ prompt: string }> };
+          answers?: string[];
+        }>;
+      }
+    | undefined;
+  const sectionDividerStyle = Array.isArray(stored?.sections)
+    ? { '& hr': { borderTop: '0.5px solid #e9e2dc' } }
+    : {};
+  const displayedBody =
+    post.body_rich && Array.isArray(stored?.sections)
+      ? {
+          ...post.body_rich,
+          content: [
+            ...(post.body_rich.content || []).slice(
+              0,
+              Number(post.body_rich.openingNodeCount)
+            ),
+            ...stored.sections.flatMap((section) => {
+              if (section?.kind !== 'template') {
+                return [
+                  ...(section?.kind === 'paragraph'
+                    ? [{ type: 'horizontalRule' }]
+                    : []),
+                  ...(typeof section?.text === 'string' && section.text.trim()
+                    ? plainTextToRichContent(section.text).content || []
+                    : []),
+                ];
+              }
+              if (!Array.isArray(section.template?.prompts)) return [];
+              return section.template.prompts.flatMap((item, index) => {
+                if (typeof item?.prompt !== 'string' || !item.prompt.trim())
+                  return [];
+                const answer = section.answers?.[index];
+                return [
+                  {
+                    type: 'paragraph',
+                    content: [
+                      {
+                        type: 'text',
+                        text: item.prompt,
+                        marks: [{ type: 'bold' }],
+                      },
+                    ],
+                  },
+                  ...(typeof answer === 'string' && answer.trim()
+                    ? plainTextToRichContent(answer).content || []
+                    : []),
+                ];
+              });
+            }),
+          ],
+        }
+      : post.body_rich;
+
   return (
     <Box
       sx={{
@@ -571,14 +631,6 @@ const WritingDetail: React.FC = () => {
                       variant="outlined"
                     />
                   )}
-                  {post.template_snapshot && (
-                    <Chip
-                      label={post.template_snapshot.template_name}
-                      size="small"
-                      color="secondary"
-                      variant="outlined"
-                    />
-                  )}
                 </Box>
                 <Typography
                   variant="h4"
@@ -589,13 +641,7 @@ const WritingDetail: React.FC = () => {
                     lineHeight: 1.35,
                   }}
                 >
-                  <HighlightedText
-                    text={
-                      post.title ||
-                      post.template_snapshot?.template_name ||
-                      '一则思考'
-                    }
-                  />
+                  <HighlightedText text={post.title || '一则思考'} />
                 </Typography>
                 <Typography color="text.secondary" sx={{ mt: 1 }}>
                   {post.author.name} · {formatLocalDateTime(post.created_at)}
@@ -702,8 +748,11 @@ const WritingDetail: React.FC = () => {
               <>
                 <Divider />
                 <Box>
-                  {post.editor_mode === 'rich' && post.body_rich ? (
-                    <RichTextRenderer content={post.body_rich} />
+                  {post.editor_mode === 'rich' && displayedBody ? (
+                    <RichTextRenderer
+                      content={displayedBody}
+                      sx={sectionDividerStyle}
+                    />
                   ) : (
                     <Typography sx={{ whiteSpace: 'pre-wrap', lineHeight: 2 }}>
                       <HighlightedText text={post.body} hideHashtags />
@@ -890,9 +939,7 @@ const WritingDetail: React.FC = () => {
                 letterSpacing: 0,
               }}
             >
-              {post.title ||
-                post.template_snapshot?.template_name ||
-                '一则思考'}
+              {post.title || '一则思考'}
             </Typography>
             <Typography
               data-download-text
@@ -925,10 +972,11 @@ const WritingDetail: React.FC = () => {
                 </Box>
               ))}
             {post.body.trim() &&
-              (post.editor_mode === 'rich' && post.body_rich ? (
+              (post.editor_mode === 'rich' && displayedBody ? (
                 <RichTextRenderer
-                  content={post.body_rich}
+                  content={displayedBody}
                   sx={{
+                    ...sectionDividerStyle,
                     maxWidth: 'none',
                     mx: 0,
                     fontSize: 15,
