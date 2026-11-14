@@ -272,7 +272,9 @@ async function prepareWriting(
   const title = String(payload.title || '').trim();
   const body = String(payload.body || '').trim();
   const editor_mode: WritingEditorMode =
-    payload.editor_mode === 'rich' ? 'rich' : 'basic';
+    payload.editor_mode === 'rich' || payload.body_rich?.writingSections
+      ? 'rich'
+      : 'basic';
   const body_rich = normalizeRichContent(editor_mode, payload.body_rich);
   if (title.length > 80) throw new RequestError('标题不能超过 80 个字');
   if (body.length > 20000) throw new RequestError('正文不能超过 20000 个字');

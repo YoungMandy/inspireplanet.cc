@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { EditorContent, useEditor } from '@tiptap/react';
+import React, { useMemo, useState } from 'react';
+import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import DOMPurify from 'dompurify';
 import {
   Box,
@@ -37,6 +37,7 @@ import styles from '../rich-text/richText.module.css';
 interface Props {
   content: WritingRichContent;
   maxLength?: number;
+  minHeight?: number;
   onChange: (content: WritingRichContent, plainText: string) => void;
 }
 
@@ -52,32 +53,63 @@ const HIGHLIGHT_COLORS = [
 const RichTextEditor: React.FC<Props> = ({
   content,
   maxLength = 20000,
+  minHeight,
   onChange,
 }) => {
-  const [, setRevision] = useState(0);
   const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
   const [highlightAnchor, setHighlightAnchor] = useState<HTMLElement | null>(
     null
   );
-  const editor = useEditor({
-    extensions: createRichTextExtensions(),
-    content,
-    editorProps: {
+  const extensions = useMemo(() => createRichTextExtensions(), []);
+  const editorProps = useMemo(
+    () => ({
       attributes: {
         class: styles.editor,
         'aria-label': '富文本正文',
+        ...(minHeight === undefined
+          ? {}
+          : { style: `min-height: ${minHeight}px` }),
       },
-    },
+    }),
+    [minHeight]
+  );
+  const editor = useEditor({
+    extensions,
+    content,
+    editorProps,
     onUpdate: ({ editor: currentEditor }) => {
       onChange(
         currentEditor.getJSON() as WritingRichContent,
         currentEditor.getText({ blockSeparator: '\n' })
       );
     },
-    onTransaction: () => setRevision((value) => value + 1),
   });
 
-  useEffect(() => () => editor?.destroy(), [editor]);
+  const toolbarState = useEditorState({
+    editor,
+    selector: ({ editor: current }) =>
+      current && {
+        length: current.getText().length,
+        undo: current.can().undo(),
+        redo: current.can().redo(),
+        active: [
+          'bold',
+          'italic',
+          'strike',
+          'code',
+          'bulletList',
+          'orderedList',
+          'blockquote',
+          'codeBlock',
+          'link',
+          'textColor',
+          'textHighlight',
+        ].map((name) => current.isActive(name)),
+        headings: [1, 2, 3, 4].map((level) =>
+          current.isActive('heading', { level })
+        ),
+      },
+  });
 
   if (!editor) return null;
 
@@ -149,7 +181,7 @@ const RichTextEditor: React.FC<Props> = ({
       action: () => editor.chain().focus().toggleBlockquote().run(),
     },
   ];
-  const textLength = editor.getText().length;
+  const textLength = toolbarState?.length ?? 0;
 
   return (
     <Paper
@@ -293,7 +325,7 @@ const RichTextEditor: React.FC<Props> = ({
           <span>
             <IconButton
               size="small"
-              disabled={!editor.can().chain().focus().undo().run()}
+              disabled={!toolbarState?.undo}
               onClick={() => editor.chain().focus().undo().run()}
             >
               <UndoIcon />
@@ -304,7 +336,7 @@ const RichTextEditor: React.FC<Props> = ({
           <span>
             <IconButton
               size="small"
-              disabled={!editor.can().chain().focus().redo().run()}
+              disabled={!toolbarState?.redo}
               onClick={() => editor.chain().focus().redo().run()}
             >
               <RedoIcon />

@@ -155,8 +155,8 @@ export function mapWritingPost(
     Boolean(currentUserId) && String(row.user_id) === String(currentUserId);
   const isAnonymous = Boolean(row.is_anonymous);
   const hasRichContent =
-    row.editor_mode === 'rich' &&
     row.body_rich &&
+    (row.editor_mode === 'rich' || row.body_rich.writingSections) &&
     typeof row.body_rich === 'object' &&
     row.body_rich.type === 'doc';
 
@@ -168,7 +168,7 @@ export function mapWritingPost(
     user_id: isAnonymous && !isOwner ? '' : String(row.user_id || ''),
     title: row.title || null,
     body: row.body || '',
-    editor_mode: hasRichContent ? 'rich' : 'basic',
+    editor_mode: hasRichContent && row.editor_mode === 'rich' ? 'rich' : 'basic',
     body_rich: hasRichContent ? row.body_rich : null,
     image_urls: Array.isArray(row.image_urls)
       ? row.image_urls.filter((url: unknown) => typeof url === 'string')

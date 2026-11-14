@@ -6,6 +6,11 @@ import {
   Button,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   FormControl,
   FormControlLabel,
   InputLabel,
@@ -50,6 +55,21 @@ import { plainTextToRichContent } from '../../components/rich-text/config';
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_WRITING_IMAGES = 9;
 
+type WritingSection =
+  | { kind: 'paragraph'; text: string }
+  | { kind: 'ending'; text: string }
+  | { kind: 'template'; template: WritingTemplate; answers: string[] };
+
+function sectionText(section: WritingSection) {
+  if (section.kind !== 'template') return section.text;
+  return [
+    section.template.name,
+    ...section.template.prompts.map(({ prompt }, index) =>
+      [prompt, section.answers[index]].filter(Boolean).join('\n')
+    ),
+  ].join('\n\n');
+}
+
 interface PendingImageUpload {
   id: string;
   name: string;
@@ -59,28 +79,83 @@ interface PendingImageUpload {
 interface CharacterCountProps {
   current: number;
   max: number;
+  compact?: boolean;
 }
 
-const CharacterCount: React.FC<CharacterCountProps> = ({ current, max }) => (
+const CharacterCount: React.FC<CharacterCountProps> = ({
+  current,
+  max,
+  compact,
+}) => (
   <Typography
     variant="caption"
     color="text.disabled"
-    sx={{
-      position: 'absolute',
-      right: 12,
-      bottom: 9,
-      zIndex: 1,
-      px: 0.5,
-      borderRadius: 0.75,
-      bgcolor: 'rgba(255, 255, 255, 0.88)',
-      lineHeight: 1.5,
-      whiteSpace: 'nowrap',
-      pointerEvents: 'none',
-    }}
+    sx={
+      compact
+        ? {
+            position: 'absolute',
+            right: 6,
+            bottom: 4,
+            fontSize: 10,
+            lineHeight: 1,
+            pointerEvents: 'none',
+          }
+        : {
+            position: 'absolute',
+            right: 12,
+            bottom: 9,
+            zIndex: 1,
+            px: 0.5,
+            borderRadius: 0.75,
+            bgcolor: 'rgba(255, 255, 255, 0.88)',
+            lineHeight: 1.5,
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+          }
+    }
   >
     {current}/{max}
   </Typography>
 );
+
+function OptionalSectionText({
+  label,
+  collapsible,
+  hasContent,
+  children,
+}: {
+  label: string;
+  collapsible: boolean;
+  hasContent: boolean;
+  children: React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (collapsible && !hasContent && !expanded) {
+    return (
+      <Box>
+        <Button
+          variant="text"
+          size="small"
+          sx={{
+            bgcolor: 'transparent',
+            boxShadow: 'none',
+            '&:hover, &:active, &.Mui-focusVisible': {
+              bgcolor: 'transparent',
+              boxShadow: 'none',
+            },
+            '&.Mui-focusVisible': { outline: '2px solid currentColor' },
+          }}
+          onClick={() => setExpanded(true)}
+        >
+          ＋ 添加{label}
+        </Button>
+      </Box>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -101,6 +176,15 @@ const WritingEditor: React.FC = () => {
   const [templates, setTemplates] = useState<WritingTemplate[]>([]);
   const [groups, setGroups] = useState<WritingGroup[]>([]);
   const [title, setTitle] = useState('');
+  const [openingRevision, setOpeningRevision] = useState(0);
+  const [multiParagraph, setMultiParagraph] = useState(false);
+  const [confirmation, setConfirmation] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    resolve: (accepted: boolean) => void;
+  } | null>(null);
+  const [sections, setSections] = useState<WritingSection[]>([]);
   const [body, setBody] = useState('');
   const [editorMode, setEditorMode] = useState<WritingEditorMode>('basic');
   const [richBody, setRichBody] = useState<WritingRichContent | null>(null);
@@ -166,9 +250,53 @@ const WritingEditor: React.FC = () => {
             return;
           }
           setTitle(post.title || '');
-          setBody(post.body || '');
-          setEditorMode(post.editor_mode || 'basic');
-          setRichBody(post.body_rich || null);
+          const stored = post.body_rich?.writingSections as
+            | {
+                opening: string;
+                sections: WritingSection[];
+                editorMode?: WritingEditorMode;
+              }
+            | undefined;
+          const saved =
+            typeof stored?.opening === 'string' &&
+            Array.isArray(stored.sections) &&
+            stored.sections.every((section) =>
+              section?.kind === 'paragraph' || section?.kind === 'ending'
+                ? typeof section.text === 'string'
+                : section?.kind === 'template' &&
+                  typeof section.template?.name === 'string' &&
+                  Array.isArray(section.template.prompts) &&
+                  section.template.prompts.every(
+                    (prompt) => typeof prompt?.prompt === 'string'
+                  ) &&
+                  Array.isArray(section.answers) &&
+                  section.answers.every((answer) => typeof answer === 'string')
+            )
+              ? stored
+              : undefined;
+          setMultiParagraph(Boolean(saved));
+          setBody(saved?.opening ?? post.body ?? '');
+          setSections(
+            saved?.sections[saved.sections.length - 1]?.kind === 'template'
+              ? [...saved.sections, { kind: 'ending', text: '' }]
+              : (saved?.sections ?? [])
+          );
+          setEditorMode(
+            saved?.editorMode === 'basic'
+              ? 'basic'
+              : post.editor_mode || 'basic'
+          );
+          setRichBody(
+            saved
+              ? {
+                  type: 'doc',
+                  content: (post.body_rich?.content || []).slice(
+                    0,
+                    Number(post.body_rich?.openingNodeCount)
+                  ),
+                }
+              : post.body_rich || null
+          );
           setTemplateId(post.template_id || '');
           setIsReview(post.writing_type === 'review');
           setVisibility(post.visibility);
@@ -200,9 +328,7 @@ const WritingEditor: React.FC = () => {
                 prompt: item.prompt,
               }))
             );
-            setAnswers(
-              post.template_snapshot.items.map((item) => item.answer)
-            );
+            setAnswers(post.template_snapshot.items.map((item) => item.answer));
           }
         }
       } catch {
@@ -218,20 +344,131 @@ const WritingEditor: React.FC = () => {
     };
   }, [id]);
 
+  const sectionGroups: number[][] = [[]];
+  sections.forEach((section, index) => {
+    if (section.kind === 'paragraph') sectionGroups.push([]);
+    sectionGroups[sectionGroups.length - 1].push(index);
+  });
+
+  const requestConfirmation = (
+    description: string,
+    title = '确认更改',
+    confirmLabel = '继续'
+  ) =>
+    new Promise<boolean>((resolve) => {
+      setConfirmation({ title, description, confirmLabel, resolve });
+    });
+
+  const closeConfirmation = (accepted: boolean) => {
+    setConfirmation(null);
+    confirmation?.resolve(accepted);
+  };
+
+  const confirmDeleteSection = async (groupIndex: number) => {
+    if (sectionGroups.length <= 1) return;
+    if (
+      !(await requestConfirmation(
+        '该段落的正文和模板回答将一并删除。',
+        `删除段落 ${groupIndex + 1}？`,
+        '删除'
+      ))
+    )
+      return;
+    const indices = sectionGroups[groupIndex];
+    if (!indices) return;
+    const remaining = sections.filter((_, index) => !indices.includes(index));
+    if (groupIndex === 0) {
+      const next = remaining.shift();
+      const text = next?.kind === 'paragraph' ? next.text : '';
+      setBody(text);
+      setRichBody(editorMode === 'rich' ? plainTextToRichContent(text) : null);
+      setOpeningRevision((revision) => revision + 1);
+    }
+    setSections(remaining);
+  };
+
+  const renderTemplatePicker = (
+    index: number,
+    selected?: Extract<WritingSection, { kind: 'template' }>
+  ) => {
+    if (!selected && !templates.length) return null;
+    return (
+      <TextField
+        select
+        size="small"
+        fullWidth
+        slotProps={{
+          select: {
+            displayEmpty: true,
+            SelectDisplayProps: {
+              'aria-label': '书写模版',
+            },
+            renderValue: () => selected?.template.name || '书写模版',
+          },
+        }}
+        value={selected?.template.id || ''}
+        onChange={async (event) => {
+          const template = templates.find(
+            ({ id }) => id === event.target.value
+          );
+          if (!template || selected?.template.id === template.id) return;
+          if (
+            selected?.answers.some((answer) => answer.trim()) &&
+            !(await requestConfirmation('切换模板会清空当前模板回答，继续吗？'))
+          )
+            return;
+          const next: WritingSection = {
+            kind: 'template',
+            template,
+            answers: [],
+          };
+          setSections((current) => {
+            const updated = [...current];
+            if (selected) updated.splice(index, 1, next);
+            else updated.splice(index, 0, next, { kind: 'ending', text: '' });
+            return updated;
+          });
+        }}
+        sx={{
+          '& .MuiSelect-select': { textAlign: 'center' },
+        }}
+      >
+        {selected &&
+          !templates.some(({ id }) => id === selected.template.id) && (
+            <MenuItem value={selected.template.id}>
+              {selected.template.name}
+            </MenuItem>
+          )}
+        {templates.map((template) => (
+          <MenuItem key={template.id} value={template.id}>
+            {template.name}
+          </MenuItem>
+        ))}
+      </TextField>
+    );
+  };
+
+  const fullBody = [body, ...sections.map(sectionText)]
+    .filter(Boolean)
+    .join('\n\n');
+
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === templateId),
     [templateId, templates]
   );
 
   const detectedHashtags = useMemo(
-    () => extractHashtags(title, body, ...answers),
-    [answers, body, title]
+    () => extractHashtags(title, fullBody, ...answers),
+    [answers, fullBody, title]
   );
 
-  const handleTemplateChange = (nextTemplateId: string) => {
+  const handleTemplateChange = async (nextTemplateId: string) => {
     if (nextTemplateId === templateId) return;
     const hasAnswers = answers.some((answer) => answer.trim());
-    if (hasAnswers && !window.confirm('切换模板会清空当前模板回答，继续吗？')) {
+    if (
+      hasAnswers &&
+      !(await requestConfirmation('切换模板会清空当前模板回答，继续吗？'))
+    ) {
       return;
     }
 
@@ -244,14 +481,14 @@ const WritingEditor: React.FC = () => {
     setHistoricalTemplateName('');
   };
 
-  const handleEditorModeChange = (nextMode: WritingEditorMode | null) => {
+  const handleEditorModeChange = async (nextMode: WritingEditorMode | null) => {
     if (!nextMode || nextMode === editorMode) return;
     if (
       nextMode === 'basic' &&
       richBody &&
-      !window.confirm(
+      !(await requestConfirmation(
         '切换到普通模式会移除富文本格式，但正文文字会保留。继续吗？'
-      )
+      ))
     ) {
       return;
     }
@@ -352,7 +589,15 @@ const WritingEditor: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const hasAnswer = answers.some((answer) => answer.trim());
-    if (!body.trim() && !hasAnswer) {
+    if (
+      !body.trim() &&
+      !hasAnswer &&
+      !sections.some((section) =>
+        section.kind !== 'template'
+          ? section.text.trim()
+          : section.answers.some((answer) => answer.trim())
+      )
+    ) {
       showSnackbar.warning('请填写正文或至少一个模板问题');
       return;
     }
@@ -360,7 +605,7 @@ const WritingEditor: React.FC = () => {
       showSnackbar.warning('每篇书写最多添加 5 个自定义 #话题');
       return;
     }
-    if (body.length > 20000) {
+    if (fullBody.length > 20000) {
       showSnackbar.warning('正文不能超过 20000 个字');
       return;
     }
@@ -372,11 +617,28 @@ const WritingEditor: React.FC = () => {
       showSnackbar.warning('请选择讨论组');
       return;
     }
+    const opening =
+      editorMode === 'rich' && richBody
+        ? richBody
+        : plainTextToRichContent(body);
+    const openingNodes = opening.content || [];
+    const document: WritingRichContent = multiParagraph
+      ? {
+          type: 'doc',
+          content: [
+            ...openingNodes,
+            ...(plainTextToRichContent(sections.map(sectionText).join('\n\n'))
+              .content || []),
+          ],
+          openingNodeCount: openingNodes.length,
+          writingSections: { opening: body, sections, editorMode },
+        }
+      : opening;
     const payload: CreateWritingRequest = {
       title,
-      body,
+      body: fullBody,
       editor_mode: editorMode,
-      body_rich: editorMode === 'rich' ? richBody : null,
+      body_rich: editorMode === 'rich' || multiParagraph ? document : null,
       image_urls: imageUrls,
       template_id: templateId || null,
       template_answers: promptFields.map((prompt, index) => ({
@@ -446,49 +708,113 @@ const WritingEditor: React.FC = () => {
                 <CharacterCount current={title.length} max={80} />
               </Box>
 
-              <FormControl fullWidth>
-                <InputLabel id="writing-template-label">
-                  书写模板（可选）
-                </InputLabel>
-                <Select
-                  labelId="writing-template-label"
-                  label="书写模板（可选）"
-                  value={templateId}
-                  onChange={(event) =>
-                    handleTemplateChange(String(event.target.value))
-                  }
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                gap={1}
+                sx={{
+                  '& .MuiToggleButton-root': {
+                    whiteSpace: 'nowrap',
+                    px: { xs: 0.5, sm: 1.25 },
+                    fontSize: { xs: 11, sm: 13 },
+                  },
+                }}
+              >
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  aria-label="写作模式"
+                  sx={{
+                    display: 'inline-grid',
+                    gridAutoFlow: 'column',
+                    gridAutoColumns: '1fr',
+                    '& .MuiToggleButton-root': { justifyContent: 'center' },
+                  }}
+                  value={multiParagraph ? 'multiple' : 'single'}
+                  onChange={async (_, value) => {
+                    if (!value) return;
+                    if (value === 'single' && sections.length) {
+                      if (
+                        !(await requestConfirmation(
+                          '切换回单篇模式会删除模板和后续段落，继续吗？'
+                        ))
+                      )
+                        return;
+                      setSections([]);
+                    }
+                    if (value === 'multiple' && templateId) {
+                      if (
+                        !(await requestConfirmation(
+                          '切换到多段落模式会清除原模板和回答，继续吗？'
+                        ))
+                      )
+                        return;
+                      setTemplateId('');
+                      setPromptFields([]);
+                      setAnswers([]);
+                      setHistoricalTemplateName('');
+                    }
+                    setMultiParagraph(value === 'multiple');
+                  }}
                 >
-                  <MenuItem value="">自由书写</MenuItem>
-                  {templateId &&
-                    !selectedTemplate &&
-                    historicalTemplateName && (
-                      <MenuItem value={templateId}>
-                        {historicalTemplateName}
-                      </MenuItem>
-                    )}
-                  {templates.map((template) => (
-                    <MenuItem key={template.id} value={template.id}>
-                      {template.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {(selectedTemplate?.description || historicalTemplateName) && (
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ mt: 1 }}
-                  >
-                    {selectedTemplate?.description ||
-                      '使用发布时保存的历史模板'}
-                  </Typography>
-                )}
-              </FormControl>
+                  <ToggleButton value="single">单篇</ToggleButton>
+                  <ToggleButton value="multiple">多段落</ToggleButton>
+                </ToggleButtonGroup>
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={editorMode}
+                  onChange={(_, value) => handleEditorModeChange(value)}
+                  aria-label="正文编辑模式"
+                >
+                  <ToggleButton value="basic">普通模式</ToggleButton>
+                  <ToggleButton value="rich">高级模式</ToggleButton>
+                </ToggleButtonGroup>
+              </Stack>
 
-              {promptFields.length > 0 && (
+              {!multiParagraph && (
+                <FormControl fullWidth>
+                  <InputLabel id="writing-template-label">
+                    书写模板（可选）
+                  </InputLabel>
+                  <Select
+                    labelId="writing-template-label"
+                    label="书写模板（可选）"
+                    value={templateId}
+                    onChange={(event) =>
+                      handleTemplateChange(String(event.target.value))
+                    }
+                  >
+                    <MenuItem value="">自由书写</MenuItem>
+                    {templateId &&
+                      !selectedTemplate &&
+                      historicalTemplateName && (
+                        <MenuItem value={templateId}>
+                          {historicalTemplateName}
+                        </MenuItem>
+                      )}
+                    {templates.map((template) => (
+                      <MenuItem key={template.id} value={template.id}>
+                        {template.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {(selectedTemplate?.description ||
+                    historicalTemplateName) && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      {selectedTemplate?.description ||
+                        '使用发布时保存的历史模板'}
+                    </Typography>
+                  )}
+                </FormControl>
+              )}
+
+              {!multiParagraph && promptFields.length > 0 && (
                 <Box>
-                  <Typography variant="h6" gutterBottom>
-                    模板引导
-                  </Typography>
                   <Stack spacing={2}>
                     {promptFields.map((prompt, index) => (
                       <Box
@@ -522,33 +848,265 @@ const WritingEditor: React.FC = () => {
               )}
 
               <Box>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  alignItems={{ xs: 'flex-start', sm: 'center' }}
-                  justifyContent="space-between"
-                  gap={1}
-                  sx={{ mb: 1.5 }}
-                >
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      正文
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      默认使用普通模式；需要排版时可切换高级模式
-                    </Typography>
-                  </Box>
-                  <ToggleButtonGroup
-                    exclusive
-                    size="small"
-                    value={editorMode}
-                    onChange={(_, value) => handleEditorModeChange(value)}
-                    aria-label="正文编辑模式"
-                  >
-                    <ToggleButton value="basic">普通模式</ToggleButton>
-                    <ToggleButton value="rich">高级模式</ToggleButton>
-                  </ToggleButtonGroup>
-                </Stack>
-                {editorMode === 'rich' ? (
+                {multiParagraph ? (
+                  <Stack spacing={2}>
+                    {sectionGroups.map((indices, groupIndex) => (
+                      <Paper key={groupIndex} variant="outlined" sx={{ p: 2 }}>
+                        <Stack spacing={2}>
+                          {groupIndex === 0 && (
+                            <OptionalSectionText
+                              label="开头"
+                              collapsible={indices.some(
+                                (index) => sections[index].kind === 'template'
+                              )}
+                              hasContent={Boolean(body.trim())}
+                            >
+                              {editorMode === 'rich' ? (
+                                <RichTextEditor
+                                  key={openingRevision}
+                                  minHeight={96}
+                                  content={
+                                    richBody || plainTextToRichContent(body)
+                                  }
+                                  onChange={(content, plainText) => {
+                                    setRichBody(content);
+                                    setBody(plainText);
+                                  }}
+                                />
+                              ) : (
+                                <Box sx={{ position: 'relative' }}>
+                                  <TextField
+                                    label="段落 1 开始"
+                                    placeholder="自由地写下观察；输入 #话题 可以创建自己的话题。"
+                                    value={body}
+                                    onChange={(event) =>
+                                      setBody(event.target.value)
+                                    }
+                                    multiline
+                                    size={body.trim() ? 'medium' : 'small'}
+                                    minRows={2}
+                                    sx={{
+                                      '& .MuiOutlinedInput-root': { pb: 3 },
+                                    }}
+                                    slotProps={{
+                                      htmlInput: { maxLength: 20000 },
+                                    }}
+                                    fullWidth
+                                  />
+                                  <CharacterCount
+                                    compact
+                                    current={body.length}
+                                    max={20000}
+                                  />
+                                </Box>
+                              )}
+                            </OptionalSectionText>
+                          )}
+                          {indices.map((index) => {
+                            const section = sections[index];
+                            return (
+                              <Box key={index}>
+                                {section.kind !== 'template' ? (
+                                  <OptionalSectionText
+                                    label={
+                                      section.kind === 'ending'
+                                        ? '结尾'
+                                        : '开头'
+                                    }
+                                    collapsible={
+                                      section.kind === 'ending' ||
+                                      indices.some(
+                                        (position) =>
+                                          sections[position].kind === 'template'
+                                      )
+                                    }
+                                    hasContent={Boolean(section.text.trim())}
+                                  >
+                                    <TextField
+                                      label={`段落 ${groupIndex + 1} ${section.kind === 'ending' ? '结尾' : '开始'}`}
+                                      value={section.text}
+                                      onChange={(event) =>
+                                        setSections((current) =>
+                                          current.map((item, position) =>
+                                            position === index
+                                              ? {
+                                                  kind: section.kind,
+                                                  text: event.target.value,
+                                                }
+                                              : item
+                                          )
+                                        )
+                                      }
+                                      multiline
+                                      size={
+                                        section.text.trim() ? 'medium' : 'small'
+                                      }
+                                      minRows={2}
+                                      fullWidth
+                                    />
+                                  </OptionalSectionText>
+                                ) : (
+                                  <Box>
+                                    <Stack spacing={2}>
+                                      {section.template.description && (
+                                        <Typography color="text.secondary">
+                                          {section.template.description}
+                                        </Typography>
+                                      )}
+                                      {section.template.prompts.map(
+                                        (prompt, answerIndex) => (
+                                          <Box
+                                            key={prompt.key}
+                                            sx={{ position: 'relative' }}
+                                          >
+                                            <TextField
+                                              label={prompt.prompt}
+                                              placeholder={prompt.placeholder}
+                                              value={
+                                                section.answers[answerIndex] ||
+                                                ''
+                                              }
+                                              onChange={(event) =>
+                                                setSections((current) =>
+                                                  current.map(
+                                                    (item, position) => {
+                                                      if (
+                                                        position !== index ||
+                                                        item.kind !== 'template'
+                                                      )
+                                                        return item;
+                                                      const next =
+                                                        item.template.prompts.map(
+                                                          (_, promptIndex) =>
+                                                            item.answers[
+                                                              promptIndex
+                                                            ] || ''
+                                                        );
+                                                      next[answerIndex] =
+                                                        event.target.value;
+                                                      return {
+                                                        ...item,
+                                                        answers: next,
+                                                      };
+                                                    }
+                                                  )
+                                                )
+                                              }
+                                              multiline
+                                              size={
+                                                (
+                                                  section.answers[
+                                                    answerIndex
+                                                  ] || ''
+                                                ).trim()
+                                                  ? 'medium'
+                                                  : 'small'
+                                              }
+                                              minRows={
+                                                (
+                                                  section.answers[
+                                                    answerIndex
+                                                  ] || ''
+                                                ).trim()
+                                                  ? 3
+                                                  : 2
+                                              }
+                                              sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                  pb: 3,
+                                                },
+                                              }}
+                                              slotProps={{
+                                                htmlInput: {
+                                                  maxLength: 4000,
+                                                },
+                                              }}
+                                              fullWidth
+                                            />
+                                            <CharacterCount
+                                              compact
+                                              current={
+                                                (
+                                                  section.answers[
+                                                    answerIndex
+                                                  ] || ''
+                                                ).length
+                                              }
+                                              max={4000}
+                                            />
+                                          </Box>
+                                        )
+                                      )}{' '}
+                                    </Stack>
+                                  </Box>
+                                )}
+                              </Box>
+                            );
+                          })}
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            useFlexGap
+                            sx={{
+                              flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                              '& > *': { flex: '1 1 0', minWidth: 0 },
+                              '& > :first-child': {
+                                flexBasis: { xs: '100%', sm: 0 },
+                              },
+                            }}
+                          >
+                            <Box>
+                              {(() => {
+                                const index = indices.find(
+                                  (position) =>
+                                    sections[position].kind === 'template'
+                                );
+                                const selected =
+                                  index === undefined
+                                    ? undefined
+                                    : sections[index];
+                                return renderTemplatePicker(
+                                  index ??
+                                    (indices[indices.length - 1] ?? -1) + 1,
+                                  selected?.kind === 'template'
+                                    ? selected
+                                    : undefined
+                                );
+                              })()}
+                            </Box>
+                            {groupIndex === sectionGroups.length - 1 && (
+                              <Button
+                                variant="outlined"
+                                sx={{ whiteSpace: 'nowrap' }}
+                                onClick={() =>
+                                  setSections((current) => [
+                                    ...current,
+                                    { kind: 'paragraph', text: '' },
+                                  ])
+                                }
+                              >
+                                添加下一段
+                              </Button>
+                            )}
+                            {sectionGroups.length > 1 && (
+                              <Button
+                                color="error"
+                                variant="outlined"
+                                size="small"
+                                sx={{ whiteSpace: 'nowrap' }}
+                                onClick={() =>
+                                  void confirmDeleteSection(groupIndex)
+                                }
+                              >
+                                删除段落
+                              </Button>
+                            )}
+                          </Stack>
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                ) : editorMode === 'rich' ? (
                   <RichTextEditor
                     content={richBody || plainTextToRichContent(body)}
                     onChange={(content, plainText) => {
@@ -819,7 +1377,7 @@ const WritingEditor: React.FC = () => {
                       onChange={(event) => setIsAnonymous(event.target.checked)}
                     />
                   }
-                  label="匿名发布（公开后不展示你的姓名和账号）"
+                  label="匿名发布"
                   sx={{ mt: 1 }}
                 />
               </Box>
@@ -848,6 +1406,33 @@ const WritingEditor: React.FC = () => {
             </Stack>
           </Paper>
         )}
+        <Dialog
+          open={confirmation !== null}
+          onClose={() => closeConfirmation(false)}
+          aria-labelledby="writing-confirmation-title"
+          aria-describedby="writing-confirmation-description"
+        >
+          <DialogTitle id="writing-confirmation-title">
+            {confirmation?.title}
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText id="writing-confirmation-description">
+              {confirmation?.description}
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button autoFocus onClick={() => closeConfirmation(false)}>
+              取消
+            </Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={() => closeConfirmation(true)}
+            >
+              {confirmation?.confirmLabel}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </Box>
   );
